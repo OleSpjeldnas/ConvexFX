@@ -130,6 +130,96 @@ The server will start on `http://127.0.0.1:3000` with endpoints:
 - Integration with existing trading systems
 - Further research on optimization-based market making
 
+## Market Comparison
+
+### ConvexFX vs. State-of-the-Art AMMs & FX Venues
+
+*(as of Oct 11, 2025)*
+
+**What we measured (ConvexFX demo):**
+From the project's scenario table & quick-start outputs:
+
+* **Balanced flow (G10)** — p90 slippage **1.82 bps**, fill **≈97.5%**; epoch clear **<200 ms** with **2–5** SCP iterations.
+* **EUR buy‑wall (stress)** — p90 slippage **5.43 bps**, fill **≈72.3%**.
+* **Price‑discovery mode (W=0)** — p90 slippage **12.34 bps**.
+* **Always coherent** (triangle‑arb ≈0); single clearing price per epoch; commit‑reveal for MEV hardening.
+
+---
+
+## Benchmarks we compare against (public sources)
+
+* **Top FX ECN (EBS Market)**: reported *average top‑of‑book (TOB) spread* in EUR/USD **≈0.63 pips** (2024) and **≈0.89 pips** (2025 H1 in higher vol). ([CME Group][1])
+* **Best on‑chain AMMs/aggregators**:
+
+  * **Uniswap v3** fee tiers include **0.01% (1 bp)** for the tightest "stable" pools (impact varies with size/liquidity). ([Uniswap Docs][2])
+  * **UniswapX** (order‑flow auctions) added **~4.7–5.3 bps** average *price improvement* vs. baseline routing during its measured period. ([Uniswap Labs][3])
+  * **CoW Protocol** uses **batch auctions** with **uniform clearing prices** to mitigate MEV. ([CoW Protocol Documentation][4])
+
+> *Note on units:* 1 pip ≈ **(1/price) bps**; at EUR/USD ≈ 1.10, **1 pip ≈ 0.91 bps**. So ECN TOB of 0.63–0.89 pips ≈ **0.57–0.81 bps** (full spread).
+> *Note on apples‑to‑apples:* ConvexFX figures are **VWAP slippage vs. oracle mid** for the whole batch; ECN "TOB" is a **spread snapshot**, not a full‑size execution cost.
+
+---
+
+## Snapshot comparison
+
+### Highly liquid pairs (EUR/USD, USD/JPY, GBP/USD)
+
+| Dimension         | **ConvexFX (demo)**                                                                       | **Top FX ECN**                                                                                                 | **Best on‑chain routes**                                                                                                                     |
+| ----------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Price quality** | Balanced p90 **1.82 bps** (≈**2.0 pips @1.10**); Stress p90 **5.43 bps**                  | Avg TOB **0.63–0.89 pips** (≈**0.57–0.81 bps**) — for a single lot at top‑of‑book; large clips may cross depth | **Fee floor 1 bp** in tight pools; realized impact varies; OFA/intent layers (UniswapX) add **~5 bps** price improvement vs baseline routing |
+| **Fill model**    | **Batched**; partial fills when bands/boxes bind; publish fills & dual‑like sensitivities | **Continuous** LOB; deep firm quotes during peak                                                               | **Continuous**; depth depends on pool concentration & routing; OFA/batchers can clear multi‑order nets                                       |
+| **Fairness/MEV**  | **Single uniform price** per epoch; commit‑reveal                                         | No MEV; time/price priority                                                                                    | MEV risk on vanilla AMMs; **batch OFA** routes mitigate and provide uniform clearing prices                                                  |
+| **Coherence**     | **Triangular‑arb‑free** by construction (one price vector)                                | Enforced by arbitrage                                                                                          | Pairwise pools may diverge across routes until arbitraged                                                                                    |
+
+**Read:** ConvexFX's balanced‑flow price quality is *respectable* in absolute bps, but **above** institutional ECN TOB for majors; the advantage is **coherent multi‑pair pricing** and **MEV‑resistant batching**, not beating ECN micro‑spreads. In stress, ConvexFX moves prices to respect inventory/bands and still clears a large share.  ([CME Group][1])
+
+---
+
+### Less‑liquid pairs (minors/exotics)
+
+| Dimension           | **ConvexFX (demo)**                                                 | **Top FX ECN / brokers**                                                           | **On‑chain long‑tail**                                                                     |
+| ------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Price quality**   | Discovery p90 **12.34 bps** (≈**13.6 pips @1.10** for illustration) | Exotics frequently **multi‑pip** spreads; venue/time dependent (wider than majors) | Often **tens to hundreds of bps** under bursts/MEV without batching; batchers/intents help |
+| **Execution model** | Batch clears; inventory‑aware                                       | Continuous streaming quotes (variable width)                                       | Continuous AMMs; routing aggregation + OFA can improve outcomes                            |
+
+**Read:** For thin pairs, ConvexFX's batched, inventory‑aware pricing can be **tighter than many long‑tail AMM routes** and within the broad envelope of retail ECN exotics, with the caveat that ECNs bring **continuous** depth and credit/custody advantages.
+
+---
+
+## Where ConvexFX stands out
+
+* **Coherent multi‑currency pricing:** all cross‑rates consistent by design; no triangular‑arb leakage.
+* **Fairness & MEV‑hardening:** one **uniform** epoch price; commit‑reveal. (Comparable to CoW's batch‑auction uniform clearing.)  ([CoW Protocol Documentation][4])
+* **Transparency:** publishes per‑epoch inputs, outputs, diagnostics.
+
+## Where incumbents are ahead
+
+* **Majors micro‑spreads & immediacy:** ECNs stream **sub‑1‑bp** full spreads on EUR/USD through much of the day and fill **continuously**; ConvexFX clears on a clock. ([CME Group][1])
+* **Always‑on small‑size access:** AMMs & aggregators offer instant fills; ConvexFX batches for fairness/MEV resistance. ([Uniswap Docs][2])
+
+---
+
+## Takeaways & next steps
+
+* On **majors**, expect ConvexFX to be **competitive with on‑chain best‑execution paths** (especially those using batch auctions/intents) while providing **cross‑pair coherence** and **MEV protection**; it will **not** beat primary ECN micro‑spreads for small clips, which are sub‑1 bp.  ([CME Group][1])
+* On **less‑liquid pairs**, ConvexFX's batch clearing offers **meaningfully tighter** realized costs than many long‑tail AMM routes during bursts, with transparent risk control.
+* Performance is already **demo‑grade** (epochs <200 ms) with room to tighten slippage via the risk/rails knobs described in your docs.
+
+---
+
+### Sources
+
+* ConvexFX scenario results, architecture & performance: project docs & quick start.
+* ECN spreads (EBS Market): CME articles on TOB levels/reductions. ([CME Group][1])
+* AMM/aggregator references: Uniswap v3 fees; UniswapX price‑improvement study; CoW Protocol MEV protection via batch auctions. ([Uniswap Docs][2])
+
+*Footnote on units:* conversions use **bps_per_pip = 1/price** (e.g., @1.10 → 1 pip ≈ 0.909 bps).
+
+[1]: https://www.cmegroup.com/articles/2024/strengthening-fx-primary-liquidity-on-ebs.html?utm_source=chatgpt.com "Strengthening FX primary liquidity on EBS - CME Group"
+[2]: https://docs.uniswap.org/concepts/protocol/fees?utm_source=chatgpt.com "Fees - Uniswap"
+[3]: https://blog.uniswap.org/measuring-price-improvement-with-order-flow-auctions?utm_source=chatgpt.com "Measuring Price Improvement with Order Flow Auctions"
+[4]: https://docs.cow.fi/cow-protocol/concepts/benefits/mev-protection?utm_source=chatgpt.com "MEV protection | CoW Protocol Documentation"
+
 ## Implementation Details
 
 ### Phase 0: Foundations ✅
