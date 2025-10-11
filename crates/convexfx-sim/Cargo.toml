@@ -1,0 +1,17 @@
+[package]
+name = "convexfx-sim"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+convexfx-types = { path = "../convexfx-types" }
+convexfx-clearing = { path = "../convexfx-clearing" }
+convexfx-oracle = { path = "../convexfx-oracle" }
+convexfx-risk = { path = "../convexfx-risk" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+nalgebra = { workspace = true }
+
+[dev-dependencies]
+

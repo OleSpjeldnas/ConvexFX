@@ -1,0 +1,18 @@
+[package]
+name = "convexfx-examples"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[[example]]
+name = "simple_clearing"
+path = "simple_clearing.rs"
+
+[dependencies]
+convexfx-clearing = { path = "../crates/convexfx-clearing" }
+convexfx-oracle = { path = "../crates/convexfx-oracle" }
+convexfx-risk = { path = "../crates/convexfx-risk" }
+convexfx-types = { path = "../crates/convexfx-types" }
+serde_json = "1.0"
+
+

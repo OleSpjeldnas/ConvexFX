@@ -1,0 +1,17 @@
+[package]
+name = "convexfx-integration-tests"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]
+convexfx-clearing = { path = "../convexfx-clearing" }
+convexfx-oracle = { path = "../convexfx-oracle" }
+convexfx-risk = { path = "../convexfx-risk" }
+convexfx-types = { path = "../convexfx-types" }
+serde_json = { workspace = true }
+
+[[test]]
+name = "complex_6_asset"
+path = "tests/complex_6_asset.rs"
+

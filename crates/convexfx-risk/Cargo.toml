@@ -1,0 +1,15 @@
+[package]
+name = "convexfx-risk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+convexfx-types = { path = "../convexfx-types" }
+nalgebra = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+
+
