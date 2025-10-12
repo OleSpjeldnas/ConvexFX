@@ -52,3 +52,7 @@ criterion = "0.5"
 # Crypto
 sha2 = "0.10"
 hex = "0.4"
+
+# Delta network integration (commented out until protoc is available)
+# delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+# delta_executor_sdk = { version = "=0.5.5", registry = "delta" }

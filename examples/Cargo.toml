@@ -8,11 +8,18 @@ publish = false
 name = "simple_clearing"
 path = "simple_clearing.rs"
 
+# [[example]]
+# name = "delta_integration"
+# path = "delta_integration.rs"
+
 [dependencies]
 convexfx-clearing = { path = "../crates/convexfx-clearing" }
 convexfx-oracle = { path = "../crates/convexfx-oracle" }
 convexfx-risk = { path = "../crates/convexfx-risk" }
 convexfx-types = { path = "../crates/convexfx-types" }
 serde_json = "1.0"
+
+# Delta network integration (commented out until protoc is available)
+# delta_base_sdk = { version = "=0.5.5", registry = "delta" }
 
 
