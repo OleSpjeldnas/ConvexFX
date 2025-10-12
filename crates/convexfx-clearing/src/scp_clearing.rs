@@ -77,6 +77,43 @@ impl ScpClearing {
         let _assets = AssetId::all();
         let n_orders = inst.orders.len();
 
+        // Trivial case: no orders in the batch. Return oracle prices and the
+        // current inventory without iterating through SCP.
+        if n_orders == 0 {
+            let y_star = inst.ref_prices.y_ref.clone();
+            let prices = y_star
+                .iter()
+                .map(|(asset, y)| (*asset, y.exp()))
+                .collect();
+            let q_post = inst.inventory_q.clone();
+            let fills = Vec::new();
+
+            let objective_terms = ObjectiveTerms {
+                inventory_risk: inst.risk.inventory_penalty(&q_post),
+                price_tracking: 0.0,
+                fill_incentive: 0.0,
+                total: inst.risk.inventory_penalty(&q_post),
+            };
+
+            let diagnostics = Diagnostics {
+                iterations: 0,
+                convergence_achieved: true,
+                final_step_norm_y: 0.0,
+                final_step_norm_alpha: 0.0,
+                qp_status: "Skipped".to_string(),
+            };
+
+            return Ok(EpochSolution {
+                epoch_id: inst.epoch_id,
+                y_star,
+                prices,
+                q_post,
+                fills,
+                objective_terms,
+                diagnostics,
+            });
+        }
+
         // Hot-start: Initialize from oracle prices (or previous solution if available)
         let mut y_current: BTreeMap<AssetId, f64> = inst
             .ref_prices
@@ -96,19 +133,23 @@ impl ScpClearing {
         let mut final_step_norm_alpha = 0.0;
         let mut qp_status = String::new();
 
+        let max_band = inst.risk.price_band_bps.max(5.0);
+        let tight_band = (max_band * 0.4).max(5.0);
+        let normal_band = (max_band * 0.8).max(tight_band);
+
         for iter in 0..self.params.max_iterations {
             iterations = iter + 1;
 
             // Adaptive trust regions: start tight, widen if needed
             let adaptive_bands = if iter == 0 {
                 // First iteration: tight bands for stability
-                10.0 // Start with 10 bps bands
+                tight_band
             } else if final_step_norm_y > self.params.tolerance_y * 10.0 {
                 // Large steps in previous iteration: widen bands for flexibility
-                30.0 // Widen to 30 bps
+                max_band
             } else {
                 // Normal iterations: use moderate bands
-                20.0
+                normal_band
             };
 
             // Build linearized QP with adaptive trust regions
@@ -377,33 +418,33 @@ impl ScpClearing {
         y_next: &BTreeMap<AssetId, f64>,
         alpha_next: &[f64],
     ) -> BTreeMap<AssetId, f64> {
-        let mut q_next = BTreeMap::new();
+        // Start from the actual inventory at the beginning of the epoch. The
+        // feasibility checks should reflect the same nonlinear updates that the
+        // solver will apply when computing the final solution so we don't
+        // prematurely reject useful steps.
+        let mut q_next = inst.inventory_q.clone();
 
-        for asset in AssetId::all() {
-            q_next.insert(*asset, inst.risk.target(*asset));
-        }
-
-        // Apply fills to inventory
+        // Apply fills using the exact inventory transformation used in
+        // `compute_fills_and_inventory`. The pool receives the pay asset and
+        // spends the receive asset. Prices are stored in log space, so the
+        // conversion between assets is exp(y_pay - y_receive).
         for (k, order) in inst.orders.iter().enumerate() {
             let alpha = alpha_next.get(k).copied().unwrap_or(0.0);
-            if alpha > 0.0 {
-                let pay_asset = order.pay;
-                let receive_asset = order.receive;
-                let budget = order.budget.to_f64();
-                let y_pay = y_next.get(&pay_asset).copied().unwrap_or(0.0);
-                let y_receive = y_next.get(&receive_asset).copied().unwrap_or(0.0);
-
-                let pay_amount = alpha * budget;
-                let receive_amount = alpha * budget * (y_receive - y_pay).exp();
-
-                // Update inventory
-                if let Some(q) = q_next.get_mut(&pay_asset) {
-                    *q -= pay_amount;
-                }
-                if let Some(q) = q_next.get_mut(&receive_asset) {
-                    *q += receive_amount;
-                }
+            if alpha <= 0.0 {
+                continue;
             }
+
+            let pay_asset = order.pay;
+            let receive_asset = order.receive;
+            let budget = order.budget.to_f64();
+            let y_pay = y_next.get(&pay_asset).copied().unwrap_or(0.0);
+            let y_receive = y_next.get(&receive_asset).copied().unwrap_or(0.0);
+
+            let pay_amount = alpha * budget;
+            let receive_amount = pay_amount * (y_pay - y_receive).exp();
+
+            *q_next.entry(pay_asset).or_insert(0.0) += pay_amount;
+            *q_next.entry(receive_asset).or_insert(0.0) -= receive_amount;
         }
 
         q_next
