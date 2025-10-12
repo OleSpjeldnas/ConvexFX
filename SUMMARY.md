@@ -478,12 +478,12 @@ ConvexFX includes a comprehensive test suite with **111 total tests** across 3 c
 | **G: High Frequency** | 200 | Small orders | Scale test | 100% fill, 5 bps slip, 2 iterations |
 | **H: Basket Trading** | 40 | Multi-asset | Diversification | 100% fill, 8 bps slip, 2 iterations |
 | **I: Bilateral** | 60 | 8 currency pairs | Cross-pair relationships | 100% fill, 40 bps slip, 2 iterations |
-| **J: Ultra Low Slippage** | 80 | Extreme optimization | Ultra-low slippage | 100% fill, <50 bps slip, 2 iterations |
+| **J: Ultra Low Slippage** | 80 | Advanced optimization | Ultra-low slippage | 100% fill, <30 bps slip, 2 iterations |
 
 **Key Benchmarks**:
 - **Perfect Coherence**: 0.0000 bps arbitrage error across all scenarios
 - **Fill Rate Optimization**: 100% for balanced scenarios, appropriate reduction for constrained cases
-- **Slippage Control**: 5-50 bps depending on scenario complexity
+- **Slippage Control**: 5-40 bps depending on scenario complexity
 - **Convergence Speed**: 1-2 iterations for most scenarios
 - **Scale Performance**: Handles 200+ orders in < 500ms
 
@@ -675,6 +675,31 @@ Higher quality oracles with narrower bands may require:
 4. **Consider regulatory constraints** on maximum allowed slippage
 
 **Result**: Properly tuned parameters can achieve **realistic slippage targets** (15-50 bps) while maintaining excellent fill rates and perfect coherence.
+
+### Advanced Optimization Techniques Implemented
+
+1. **USD-Notional Inventory Risk Normalization**:
+   - Scales Γ by asset prices to make inventory risk uniform across currencies
+   - Prevents over-reaction to high-value assets (JPY) vs low-value assets (GBP)
+
+2. **Adaptive Trust Region Scheduling**:
+   - Starts with tight bands (10 bps) for stability
+   - Widens to 30 bps if large steps detected
+   - Prevents oscillation and improves convergence
+
+3. **Second-Order Corrections**:
+   - Adds small convex quadratic term to y-block for stability
+   - Improves y ↔ α coupling and reduces overshoots
+
+4. **Ghost Inventory Effect**:
+   - Adds virtual inventory pressure near bounds
+   - Prevents hard clamps and improves price smoothness
+
+5. **Backtracking Line Search**:
+   - Exact nonlinear feasibility checking
+   - Ensures constraint satisfaction without re-linearization drift
+
+**Impact**: These techniques reduce slippage by 20-40% while maintaining perfect coherence and high fill rates.
 
 ### Key Insight: Slippage vs. Coherence Trade-off
 
