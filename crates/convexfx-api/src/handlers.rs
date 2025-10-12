@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use convexfx_types::{AssetId, AccountId, PairOrder, Amount};
+use convexfx_types::{AssetId, AccountId, PairOrder, Amount, AssetRegistry, AssetInfo};
 use sha2::{Sha256, Digest};
 use hex;
 
@@ -303,4 +303,158 @@ pub async fn get_epoch(
         epoch_id: 1,
         state: "COLLECT".to_string(),
     })
+}
+
+#[derive(Deserialize)]
+pub struct AddAssetRequest {
+    pub symbol: String,
+    pub name: String,
+    pub decimals: u32,
+    pub is_base_currency: bool,
+    pub initial_price: f64,
+}
+
+#[derive(Serialize)]
+pub struct AddAssetResponse {
+    pub success: bool,
+    pub asset_id: String,
+    pub message: String,
+}
+
+#[derive(Deserialize)]
+pub struct ProvideLiquidityRequest {
+    pub account_id: String,
+    pub asset_symbol: String,
+    pub amount: String, // Amount as string for JSON
+}
+
+#[derive(Serialize)]
+pub struct ProvideLiquidityResponse {
+    pub success: bool,
+    pub message: String,
+    pub new_balance: String,
+}
+
+#[derive(Serialize)]
+pub struct AssetListResponse {
+    pub assets: Vec<AssetInfoResponse>,
+}
+
+#[derive(Serialize)]
+pub struct AssetInfoResponse {
+    pub symbol: String,
+    pub name: String,
+    pub decimals: u32,
+    pub is_base_currency: bool,
+    pub current_price: Option<f64>,
+}
+
+/// Add a new asset to the system
+pub async fn add_asset(
+    State(state): State<AppState>,
+    Json(req): Json<AddAssetRequest>,
+) -> impl IntoResponse {
+    let symbol = req.symbol.to_uppercase();
+
+    // Validate symbol format
+    if symbol.len() < 2 || symbol.len() > 10 {
+        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid symbol format"})));
+    }
+
+    // Check if asset already exists
+    let mut oracle = state.oracle.lock().unwrap();
+    if oracle.add_asset(symbol.clone(), req.name.clone(), req.initial_price, req.decimals, req.is_base_currency).is_ok() {
+        (StatusCode::OK, Json(AddAssetResponse {
+            success: true,
+            asset_id: symbol,
+            message: format!("Asset {} added successfully", symbol),
+        }))
+    } else {
+        (StatusCode::CONFLICT, Json(serde_json::json!({"error": "Asset already exists or invalid parameters"})))
+    }
+}
+
+/// Provide liquidity by depositing assets
+pub async fn provide_liquidity(
+    State(state): State<AppState>,
+    Json(req): Json<ProvideLiquidityRequest>,
+) -> impl IntoResponse {
+    // Parse account ID
+    let account_id = AccountId::new(req.account_id.clone());
+
+    // Parse asset symbol
+    let asset_symbol = req.asset_symbol.to_uppercase();
+    let asset_id = match AssetId::from_str(&asset_symbol) {
+        Some(asset) => asset,
+        None => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid asset symbol"}))),
+    };
+
+    // Parse amount
+    let amount = match Amount::from_string(&req.amount) {
+        Ok(amount) => amount,
+        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid amount format"}))),
+    };
+
+    // Deposit to ledger
+    let mut ledger = state.ledger.lock().unwrap();
+    match ledger.deposit(account_id, asset_id, amount) {
+        Ok(_) => {
+            // Get new balance
+            let new_balance = ledger.balance(&AccountId::new(req.account_id), asset_id);
+            (StatusCode::OK, Json(ProvideLiquidityResponse {
+                success: true,
+                message: format!("Liquidity provided successfully"),
+                new_balance: new_balance.to_string(),
+            }))
+        }
+        Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": format!("Failed to provide liquidity: {}", e)}))),
+    }
+}
+
+/// List all available assets
+pub async fn list_assets(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let oracle = state.oracle.lock().unwrap();
+    let registry = oracle.registry.lock().unwrap();
+
+    let mut assets = Vec::new();
+    for symbol in registry.get_all_assets() {
+        let info = registry.get_asset_info(symbol).unwrap();
+        let current_price = oracle.prices.get(symbol).copied();
+
+        assets.push(AssetInfoResponse {
+            symbol: symbol.to_string(),
+            name: info.name.clone(),
+            decimals: info.decimals,
+            is_base_currency: info.is_base_currency,
+            current_price,
+        });
+    }
+
+    Json(AssetListResponse { assets })
+}
+
+/// Get current liquidity/balances for all accounts
+pub async fn get_liquidity(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    use convexfx_ledger::Ledger;
+
+    let ledger = state.ledger.lock().unwrap();
+    let accounts = ledger.list_accounts();
+
+    let mut liquidity_data = serde_json::Map::new();
+    for account in accounts {
+        let balances = ledger.account_balances(&account);
+        if !balances.is_empty() {
+            let mut account_balances = serde_json::Map::new();
+            for (asset, amount) in balances {
+                account_balances.insert(asset.to_string(), serde_json::Value::String(amount.to_string()));
+            }
+            liquidity_data.insert(account.to_string(), serde_json::Value::Object(account_balances));
+        }
+    }
+
+    Json(liquidity_data)
 }

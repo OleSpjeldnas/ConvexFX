@@ -30,6 +30,14 @@ pub fn create_app(state: AppState) -> Router {
         // System status
         .route("/v1/status", get(handlers::get_system_status))
 
+        // Asset management
+        .route("/v1/assets", get(handlers::list_assets))
+        .route("/v1/assets", post(handlers::add_asset))
+
+        // Liquidity management
+        .route("/v1/liquidity", get(handlers::get_liquidity))
+        .route("/v1/liquidity", post(handlers::provide_liquidity))
+
         .layer(CorsLayer::permissive())
         .with_state(state)
 }

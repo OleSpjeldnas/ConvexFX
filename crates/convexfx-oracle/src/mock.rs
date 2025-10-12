@@ -1,5 +1,6 @@
-use convexfx_types::{AssetId, EpochId, Result};
+use convexfx_types::{AssetId, EpochId, Result, AssetRegistry};
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::oracle::Oracle;
@@ -9,32 +10,52 @@ use crate::reference_prices::RefPrices;
 /// Useful for testing and demos
 #[derive(Debug, Clone)]
 pub struct MockOracle {
-    prices: BTreeMap<AssetId, f64>,
+    prices: BTreeMap<String, f64>, // Store by symbol for flexibility
     band_bps: f64,
+    registry: Arc<Mutex<AssetRegistry>>,
 }
 
 impl MockOracle {
     /// Create a new mock oracle with default FX prices
     pub fn new() -> Self {
+        let mut registry = AssetRegistry::new();
+
+        // Register default assets
+        registry.register_asset("USD".to_string(), "US Dollar".to_string(), 2, true);
+        registry.register_asset("EUR".to_string(), "Euro".to_string(), 2, false);
+        registry.register_asset("JPY".to_string(), "Japanese Yen".to_string(), 0, false);
+        registry.register_asset("GBP".to_string(), "British Pound".to_string(), 2, false);
+        registry.register_asset("CHF".to_string(), "Swiss Franc".to_string(), 2, false);
+        registry.register_asset("AUD".to_string(), "Australian Dollar".to_string(), 2, false);
+
         let mut prices = BTreeMap::new();
-        prices.insert(AssetId::USD, 1.0);
-        prices.insert(AssetId::EUR, 1.1000); // EURUSD = 1.1
-        prices.insert(AssetId::JPY, 0.0100); // USDJPY = 100
-        prices.insert(AssetId::GBP, 1.2500); // GBPUSD = 1.25
-        prices.insert(AssetId::CHF, 1.0800); // CHFUSD = 1.08
-        prices.insert(AssetId::AUD, 0.7500); // AUDUSD = 0.75
+        prices.insert("USD".to_string(), 1.0);
+        prices.insert("EUR".to_string(), 1.1000); // EURUSD = 1.1
+        prices.insert("JPY".to_string(), 0.0100); // USDJPY = 100
+        prices.insert("GBP".to_string(), 1.2500); // GBPUSD = 1.25
+        prices.insert("CHF".to_string(), 1.0800); // CHFUSD = 1.08
+        prices.insert("AUD".to_string(), 0.7500); // AUDUSD = 0.75
 
         MockOracle {
             prices,
             band_bps: 20.0, // ±20 bps default
+            registry: Arc::new(Mutex::new(registry)),
         }
     }
 
     /// Create with custom prices (linear prices, not log)
-    pub fn with_prices(prices: BTreeMap<AssetId, f64>) -> Self {
+    pub fn with_prices(prices: BTreeMap<String, f64>) -> Self {
+        let mut registry = AssetRegistry::new();
+
+        // Register assets from the prices map
+        for (symbol, _) in &prices {
+            registry.register_asset(symbol.clone(), format!("{} Currency", symbol), 2, symbol == "USD");
+        }
+
         MockOracle {
             prices,
             band_bps: 20.0,
+            registry: Arc::new(Mutex::new(registry)),
         }
     }
 
@@ -45,8 +66,15 @@ impl MockOracle {
     }
 
     /// Update a price
-    pub fn set_price(&mut self, asset: AssetId, price: f64) {
-        self.prices.insert(asset, price);
+    pub fn set_price(&mut self, symbol: &str, price: f64) {
+        self.prices.insert(symbol.to_string(), price);
+    }
+
+    /// Add a new asset to the oracle
+    pub fn add_asset(&mut self, symbol: String, name: String, price: f64, decimals: u32, is_base: bool) {
+        let mut registry = self.registry.lock().unwrap();
+        registry.register_asset(symbol.clone(), name, decimals, is_base);
+        self.prices.insert(symbol, price);
     }
 
     /// Get current timestamp in milliseconds
@@ -59,15 +87,17 @@ impl MockOracle {
 
     /// Convert linear prices to log-prices
     fn to_log_prices(&self) -> BTreeMap<AssetId, f64> {
+        let registry = self.registry.lock().unwrap();
         self.prices
             .iter()
-            .map(|(asset, price)| {
-                let log_price = if *asset == AssetId::USD {
+            .map(|(symbol, price)| {
+                let asset_id = AssetId::new(symbol.clone());
+                let log_price = if *symbol == "USD" {
                     0.0 // USD is numeraire
                 } else {
                     price.ln()
                 };
-                (*asset, log_price)
+                (asset_id, log_price)
             })
             .collect()
     }

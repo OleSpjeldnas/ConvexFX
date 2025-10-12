@@ -7,7 +7,7 @@ mod prices;
 mod order;
 mod error;
 
-pub use asset::AssetId;
+pub use asset::{AssetId, AssetRegistry, AssetInfo};
 pub use amount::Amount;
 pub use account::AccountId;
 pub use epoch::EpochId;

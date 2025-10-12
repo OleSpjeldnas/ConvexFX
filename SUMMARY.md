@@ -667,15 +667,6 @@ Higher quality oracles with narrower bands may require:
 - Tighter price bands
 - More conservative inventory penalties
 
-### Validation Approach
-
-1. **Test with historical data** to validate parameter choices
-2. **Backtest scenarios** with different parameter combinations
-3. **Monitor production metrics** and adjust as needed
-4. **Consider regulatory constraints** on maximum allowed slippage
-
-**Result**: Properly tuned parameters can achieve **realistic slippage targets** (15-50 bps) while maintaining excellent fill rates and perfect coherence.
-
 ### Advanced Optimization Techniques Implemented
 
 1. **USD-Notional Inventory Risk Normalization**:
@@ -708,15 +699,6 @@ The optimization reveals an important trade-off:
 - **Slippage** depends on inventory pressure and constraint tightness
 - **Fill rates** remain high (95%+) across scenarios
 - **Performance** is consistent (2 iterations, < 200ms)
-
-### Practical Slippage Management
-
-For production deployment:
-
-1. **Accept realistic slippage** (15-50 bps) for complex scenarios
-2. **Monitor coherence** as the primary success metric
-3. **Adjust parameters** based on specific use case requirements
-4. **Consider scenario-specific tuning** for different market conditions
 
 **Bottom Line**: ConvexFX achieves its core objectives of **coherent pricing** and **efficient clearing** while maintaining **excellent performance** and **high fill rates**. The slippage levels are within acceptable ranges for institutional FX trading.
 

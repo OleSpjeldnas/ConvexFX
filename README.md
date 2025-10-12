@@ -72,9 +72,16 @@ Where:
 - `W`: price tracking matrix
 - `η`: fill incentive weight
 
-## Supported Assets (Demo)
+## Supported Assets (Extensible)
 
-USD, EUR, JPY, GBP, CHF
+**Default Assets**: USD, EUR, JPY, GBP, CHF, AUD
+
+**Dynamic Asset System**: New assets can be added at runtime via the API:
+- Register new currencies with custom names and decimal precision
+- Set initial prices and designate base currencies
+- All assets participate in the coherent pricing optimization
+
+**Liquidity Provision**: External parties can provide liquidity by depositing assets into the system via API endpoints.
 
 ## Key Features
 
@@ -131,10 +138,61 @@ cargo run -p convexfx-api
 
 The server will start on `http://127.0.0.1:3000` with endpoints:
 
+### Core Endpoints
 - `GET /health` - Health check
 - `GET /v1/info` - System information
-- `POST /v1/orders/commit` - Submit order commitment
+
+### Trading & Orders
+- `POST /v1/orders/submit` - Submit new order (creates commitment)
+- `POST /v1/orders/reveal` - Reveal order details
+- `POST /v1/orders/commit` - Submit order commitment (legacy)
+
+### Market Data
+- `GET /v1/prices` - Current market prices from oracle
+
+### Epoch Management
+- `GET /v1/epochs` - List all epochs
 - `GET /v1/epochs/current` - Get current epoch info
+- `GET /v1/epochs/:epoch_id` - Get specific epoch details
+
+### Asset & Liquidity Management
+- `GET /v1/assets` - List all available assets
+- `POST /v1/assets` - Add new asset to the system
+- `GET /v1/liquidity` - Get current liquidity/balances
+- `POST /v1/liquidity` - Provide liquidity by depositing assets
+
+### System Monitoring
+- `GET /v1/status` - System status and metrics
+
+### API Usage Examples
+```bash
+# Get system status
+curl http://127.0.0.1:3000/v1/status
+
+# Submit an order
+curl -X POST http://127.0.0.1:3000/v1/orders/submit \
+  -H "Content-Type: application/json" \
+  -d '{"pay_asset":"USD","receive_asset":"EUR","budget":"1000000"}'
+
+# Get current prices
+curl http://127.0.0.1:3000/v1/prices
+
+# List all assets
+curl http://127.0.0.1:3000/v1/assets
+
+# Add a new asset (e.g., Bitcoin)
+curl -X POST http://127.0.0.1:3000/v1/assets \
+  -H "Content-Type: application/json" \
+  -d '{"symbol":"BTC","name":"Bitcoin","decimals":8,"is_base_currency":false,"initial_price":50000.0}'
+
+# Provide liquidity
+curl -X POST http://127.0.0.1:3000/v1/liquidity \
+  -H "Content-Type: application/json" \
+  -d '{"account_id":"liquidity_provider_1","asset_symbol":"BTC","amount":"1000000000000"}'  # 10k BTC
+
+# Get current liquidity
+curl http://127.0.0.1:3000/v1/liquidity
+```
 
 ## Project Status
 
