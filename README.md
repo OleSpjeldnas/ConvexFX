@@ -194,6 +194,8 @@ curl -X POST http://127.0.0.1:3000/v1/liquidity \
 curl http://127.0.0.1:3000/v1/liquidity
 ```
 
+**📚 Complete API Documentation**: See `book/src/api.md` for detailed API reference with request/response examples and error handling.
+
 ## Project Status
 
 **✅ PRODUCTION-READY** - This implementation demonstrates the feasibility of optimization-based AMM clearing for real-world FX markets.

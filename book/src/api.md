@@ -18,6 +18,9 @@ The API accepts ISO-style asset symbols that map to the `AssetId` enum used inte
 
 Any other value will return `400 Bad Request` during order submission. 【F:crates/convexfx-types/src/asset.rs†L5-L45】【F:crates/convexfx-api/src/handlers.rs†L60-L82】
 
+### Dynamic Asset Registration
+The system now supports dynamic asset registration at runtime via the API. New assets can be added with custom names and decimal precision. All registered assets participate in the coherent pricing optimization. 【F:crates/convexfx-types/src/asset.rs†L6-L72】【F:crates/convexfx-oracle/src/mock.rs†L73-L78】
+
 ### Amounts
 Budget amounts are encoded as decimal strings and parsed into the fixed-point `Amount` type with 9 decimal places. Invalid strings result in a `400 Bad Request` response. 【F:crates/convexfx-types/src/amount.rs†L6-L88】【F:crates/convexfx-api/src/handlers.rs†L84-L95】
 
@@ -231,6 +234,135 @@ Response:
 ```
 
 【F:crates/convexfx-api/src/handlers.rs†L183-L204】
+
+## Asset management
+
+### `GET /v1/assets`
+Returns a list of all registered assets with their metadata and current prices.
+
+```bash
+curl http://127.0.0.1:3000/v1/assets
+```
+
+Example response:
+
+```json
+{
+  "assets": [
+    {
+      "symbol": "USD",
+      "name": "US Dollar",
+      "decimals": 2,
+      "is_base_currency": true,
+      "current_price": 1.0
+    },
+    {
+      "symbol": "EUR",
+      "name": "Euro",
+      "decimals": 2,
+      "is_base_currency": false,
+      "current_price": 1.1025
+    }
+  ]
+}
+```
+
+【F:crates/convexfx-api/src/handlers.rs†L262-L279】
+
+### `POST /v1/assets`
+Registers a new asset in the system. Fields:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `symbol` | string | ✅ | Asset symbol (2-10 characters, uppercase). |
+| `name` | string | ✅ | Human-readable asset name. |
+| `decimals` | integer | ✅ | Number of decimal places for the asset. |
+| `is_base_currency` | boolean | ✅ | Whether this is a base currency (e.g., USD). |
+| `initial_price` | float | ✅ | Initial price in USD (for non-base currencies). |
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:3000/v1/assets \
+  -H "Content-Type: application/json" \
+  -d '{
+        "symbol": "BTC",
+        "name": "Bitcoin",
+        "decimals": 8,
+        "is_base_currency": false,
+        "initial_price": 50000.0
+      }'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "asset_id": "BTC",
+  "message": "Asset BTC added successfully"
+}
+```
+
+【F:crates/convexfx-api/src/handlers.rs†L244-L261】
+
+## Liquidity management
+
+### `GET /v1/liquidity`
+Returns current liquidity/balances for all accounts in the system.
+
+```bash
+curl http://127.0.0.1:3000/v1/liquidity
+```
+
+Example response:
+
+```json
+{
+  "account_1": {
+    "USD": "1000000.000000000",
+    "EUR": "500000.000000000"
+  },
+  "liquidity_provider_1": {
+    "BTC": "1000000000000.000000000"
+  }
+}
+```
+
+【F:crates/convexfx-api/src/handlers.rs†L305-L320】
+
+### `POST /v1/liquidity`
+Provides liquidity by depositing assets into an account.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `account_id` | string | ✅ | Account identifier. |
+| `asset_symbol` | string | ✅ | Asset symbol to deposit. |
+| `amount` | string | ✅ | Amount to deposit (decimal string). |
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:3000/v1/liquidity \
+  -H "Content-Type: application/json" \
+  -d '{
+        "account_id": "liquidity_provider_1",
+        "asset_symbol": "BTC",
+        "amount": "1000000000000"
+      }'
+```
+
+Response:
+
+```json
+{
+  "success": true,
+  "message": "Liquidity provided successfully",
+  "new_balance": "1000000000000.000000000"
+}
+```
+
+【F:crates/convexfx-api/src/handlers.rs†L281-L304】
 
 ## CORS
 The API enables a permissive CORS layer so that browser-based clients can issue cross-origin requests without additional configuration. 【F:crates/convexfx-api/src/server.rs†L5-L33】
