@@ -2,6 +2,27 @@
 
 A demo-ready, single-pool FX AMM that clears **batched orders per epoch** by solving a **(sequential) convex optimization** problem to produce a **coherent price vector** and fills.
 
+> ### Where ConvexFX is most competitive (and why)
+> **ConvexFX** wins whenever you need *coherent, fair, multi‑currency pricing* and can batch flow for 30–60s. Instead of quoting pair‑by‑pair curves, ConvexFX clears **all currencies at once** via a convex program, publishing a **single price vector** per epoch with **no triangular arbitrage** and **MEV‑resistant** execution. This is ideal for:
+>
+> - **Long‑tail / exotic corridors** where A→USD→B bridging pays two legs of fee+impact. A single‑pool clear can net flows across many pairs and settle **direct** A↔B at lower all‑in cost.
+> - **Fairness / MEV‑sensitive flows** (payroll batches, B2B payouts, treasuries): one **uniform** clearing price per epoch + commit‑reveal ⇒ no intra‑epoch sandwiching.
+> - **Basket & treasury operations** (multi‑currency deltas in one trade): solving all legs together yields consistent cross‑rates and fewer hops.
+> - **Policy‑aware endpoints**: price bands and oracle tracking keep prices sane and auditable; inventory‑aware fees can *rebate* balancing flow.
+>
+> **How we measure it — "all‑in execution cost" (AIEC).**  
+> We compare venues on *what a taker actually paid*:  
+> `AIEC (bps) = slippage vs. mid + venue fee + impact + MEV/LVR + gas − routing improvement`.  
+> In ConvexFX batches, **MEV/LVR ≈ 0** by design; the rest is reported per epoch.
+>
+> #### One‑minute example — BRL → INR payroll (illustrative)
+> - **AMM (USD‑bridged, long‑tail preset):**  
+>   fee 30 bps + impact 20 bps (two shallow pools) + MEV/LVR 15 bps + gas 0.05 bps ≈ **65 bps** AIEC.
+> - **ConvexFX (direct, single pool):**  
+>   slippage **≈12–13 bps** in discovery mode + fee **1–3 bps** ⇒ **≈13–15 bps** AIEC, **uniform price**, coherent cross‑rates, and no intra‑epoch MEV.
+>
+> For majors with intent/auction routers, ConvexFX is competitive on AIEC while adding coherence and fairness; for thin pairs, it's often **4–5× cheaper** than vanilla AMM routing. See **Market Comparison** below for numbers and methodology.
+
 ## Overview
 
 ConvexFX implements a novel approach to automated market making for foreign exchange that solves the **batch clearing problem** using Sequential Convex Programming (SCP). Unlike traditional AMMs that use bonding curves, ConvexFX:
