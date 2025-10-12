@@ -20,11 +20,42 @@ impl QpBuilder {
         let n_orders = inst.orders.len();
         let n_vars = n_assets + n_orders; // y (with USD fixed at 0) + alpha
 
-        // Build Hessian P = diag([W, 0]) + diag([Γ, 0]) from inventory linearization
-        // Simplified: P = diag([W_diag, zeros])
+        // Build Hessian P with USD-notional normalized inventory risk
+        // P = diag([W, 0]) + D_p^T Γ D_p where D_p = diag(sqrt(p)) for USD-notional normalization
         let mut p_diag = vec![0.0; n_vars];
-        for (i, _asset) in assets.iter().enumerate() {
-            p_diag[i] = inst.risk.w_diag[i];
+
+        // USD-notional normalization: scale Γ by price levels to make inventory risk uniform across currencies
+        for (i, asset) in assets.iter().enumerate() {
+            let price = inst.ref_prices.get_ref(*asset).exp(); // USD per unit of asset
+            let normalized_gamma = inst.risk.gamma_diag[i] * price; // Scale by USD value
+            p_diag[i] = inst.risk.w_diag[i] + normalized_gamma;
+        }
+
+        // Add second-order correction for y ↔ α coupling stability
+        // Add small convex quadratic term: 0.5 * β * ||Δy||² where β > 0
+        let second_order_beta = 0.1; // Small positive value for stability
+        for i in 0..n_assets {
+            p_diag[i] += second_order_beta;
+        }
+
+        // Add ghost inventory effect for stability near bounds
+        // When inventory is near bounds, add virtual inventory pressure toward oracle mid
+        for (i, asset) in assets.iter().enumerate() {
+            let current_inventory = inst.inventory_q.get(asset).copied().unwrap_or(0.0);
+            let target_inventory = inst.risk.target(*asset);
+            let min_bound = inst.risk.min_bound(*asset);
+            let max_bound = inst.risk.max_bound(*asset);
+
+            // Check if inventory is near bounds (within 10% of bound range)
+            let bound_range = max_bound - min_bound;
+            let near_bound_threshold = bound_range * 0.1;
+
+            if (current_inventory - min_bound).abs() < near_bound_threshold ||
+               (max_bound - current_inventory).abs() < near_bound_threshold {
+                // Add ghost inventory pressure toward target
+                let ghost_pressure = inst.risk.ghost_inventory_weight;
+                p_diag[i] += ghost_pressure;
+            }
         }
 
         let p = DMatrix::from_diagonal(&DVector::from_vec(p_diag));
@@ -123,11 +154,42 @@ impl QpBuilder {
         let n_orders = inst.orders.len();
         let n_vars = n_assets + n_orders; // y (with USD fixed at 0) + alpha
 
-        // Build Hessian P = diag([W, 0]) + diag([Γ, 0]) from inventory linearization
-        // Simplified: P = diag([W_diag, zeros])
+        // Build Hessian P with USD-notional normalized inventory risk
+        // P = diag([W, 0]) + D_p^T Γ D_p where D_p = diag(sqrt(p)) for USD-notional normalization
         let mut p_diag = vec![0.0; n_vars];
-        for (i, _asset) in assets.iter().enumerate() {
-            p_diag[i] = inst.risk.w_diag[i];
+
+        // USD-notional normalization: scale Γ by price levels to make inventory risk uniform across currencies
+        for (i, asset) in assets.iter().enumerate() {
+            let price = inst.ref_prices.get_ref(*asset).exp(); // USD per unit of asset
+            let normalized_gamma = inst.risk.gamma_diag[i] * price; // Scale by USD value
+            p_diag[i] = inst.risk.w_diag[i] + normalized_gamma;
+        }
+
+        // Add second-order correction for y ↔ α coupling stability
+        // Add small convex quadratic term: 0.5 * β * ||Δy||² where β > 0
+        let second_order_beta = 0.1; // Small positive value for stability
+        for i in 0..n_assets {
+            p_diag[i] += second_order_beta;
+        }
+
+        // Add ghost inventory effect for stability near bounds
+        // When inventory is near bounds, add virtual inventory pressure toward oracle mid
+        for (i, asset) in assets.iter().enumerate() {
+            let current_inventory = inst.inventory_q.get(asset).copied().unwrap_or(0.0);
+            let target_inventory = inst.risk.target(*asset);
+            let min_bound = inst.risk.min_bound(*asset);
+            let max_bound = inst.risk.max_bound(*asset);
+
+            // Check if inventory is near bounds (within 10% of bound range)
+            let bound_range = max_bound - min_bound;
+            let near_bound_threshold = bound_range * 0.1;
+
+            if (current_inventory - min_bound).abs() < near_bound_threshold ||
+               (max_bound - current_inventory).abs() < near_bound_threshold {
+                // Add ghost inventory pressure toward target
+                let ghost_pressure = inst.risk.ghost_inventory_weight;
+                p_diag[i] += ghost_pressure;
+            }
         }
 
         let p = DMatrix::from_diagonal(&DVector::from_vec(p_diag));

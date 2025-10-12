@@ -122,10 +122,12 @@ mod tests {
             q_min,
             q_max,
             30.0, // band_bps
+            0.01, // ghost_inventory_weight
         );
 
         assert_eq!(params.eta, 2.0);
         assert_eq!(params.price_band_bps, 30.0);
+        assert_eq!(params.ghost_inventory_weight, 0.01);
         assert_eq!(params.target(AssetId::USD), 5.0);
     }
 

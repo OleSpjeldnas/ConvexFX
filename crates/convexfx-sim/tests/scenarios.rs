@@ -426,14 +426,14 @@ fn test_scenario_j_moderate_slippage() {
     // Ultra-low slippage optimization assertions
     assert!(result.summary.passed, "Scenario J should pass: {:?}", result.summary.failure_reasons);
 
-    // Should achieve reasonable fill rates with moderate optimization
+    // Should achieve reasonable fill rates with ultra-low slippage optimization
     assert!(result.summary.avg_fill_rate >= 0.60,
-        "Fill rate should be ≥60% in moderate slippage scenario, got {:.2}%",
+        "Fill rate should be ≥60% in ultra-low slippage scenario, got {:.2}%",
         result.summary.avg_fill_rate * 100.0);
 
-    // Critical: Moderate slippage for balanced parameter optimization
+    // Critical: Ultra-low slippage with advanced optimization
     assert!(result.summary.avg_slippage_p90_bps < 30.0,
-        "Slippage p90 should be <30 bps in moderate slippage scenario, got {:.4} bps",
+        "Slippage p90 should be <30 bps in ultra-low slippage scenario, got {:.4} bps",
         result.summary.avg_slippage_p90_bps);
 
     // Should still maintain perfect coherence

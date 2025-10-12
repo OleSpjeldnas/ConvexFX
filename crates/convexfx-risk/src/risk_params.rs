@@ -36,6 +36,9 @@ pub struct RiskParams {
 
     /// Price band in basis points (trust region)
     pub price_band_bps: f64,
+
+    /// Ghost inventory weight (virtual cushion near bounds)
+    pub ghost_inventory_weight: f64,
 }
 
 impl RiskParams {
@@ -73,6 +76,7 @@ impl RiskParams {
             q_min,
             q_max,
             price_band_bps: 25.0, // Moderate bands for stability
+            ghost_inventory_weight: 0.01, // Small virtual cushion
         }
     }
 
@@ -110,6 +114,7 @@ impl RiskParams {
             q_min,
             q_max,
             price_band_bps: 30.0, // Moderate bands for flexibility (was 20.0)
+            ghost_inventory_weight: 0.01, // Small virtual cushion
         }
     }
 
@@ -147,6 +152,7 @@ impl RiskParams {
             q_min,
             q_max,
             price_band_bps: 50.0, // Wider bands for flexibility in stress
+            ghost_inventory_weight: 0.01, // Small virtual cushion
         }
     }
 
@@ -183,6 +189,7 @@ impl RiskParams {
             q_min,
             q_max,
             price_band_bps: 50.0, // Increased for better flexibility
+            ghost_inventory_weight: 0.01, // Small virtual cushion
         }
     }
 
@@ -195,6 +202,7 @@ impl RiskParams {
         q_min: BTreeMap<AssetId, f64>,
         q_max: BTreeMap<AssetId, f64>,
         price_band_bps: f64,
+        ghost_inventory_weight: f64,
     ) -> Self {
         let gamma = DMatrix::from_diagonal(&nalgebra::DVector::from_vec(gamma_diag.clone()));
         let w_track = DMatrix::from_diagonal(&nalgebra::DVector::from_vec(w_diag.clone()));
@@ -209,6 +217,7 @@ impl RiskParams {
             q_min,
             q_max,
             price_band_bps,
+            ghost_inventory_weight,
         }
     }
 

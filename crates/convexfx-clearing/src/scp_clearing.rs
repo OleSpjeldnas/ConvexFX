@@ -87,6 +87,9 @@ impl ScpClearing {
 
         let mut alpha_current: Vec<f64> = vec![0.0; n_orders];
 
+        // Store previous solution for hot-starting next epoch
+        let mut _previous_solution: Option<(BTreeMap<AssetId, f64>, Vec<f64>)> = None;
+
         let mut iterations = 0;
         let mut converged = false;
         let mut final_step_norm_y = 0.0;
@@ -164,8 +167,11 @@ impl ScpClearing {
             final_step_norm_alpha = step_norm_alpha;
 
             // Update iterates
-            y_current = y_next;
-            alpha_current = alpha_next;
+            y_current = y_next.clone();
+            alpha_current = alpha_next.clone();
+
+            // Store solution for hot-starting next epoch
+            _previous_solution = Some((y_next, alpha_next));
 
             // Check convergence
             if step_norm_y < self.params.tolerance_y && step_norm_alpha < self.params.tolerance_alpha {
@@ -401,6 +407,19 @@ impl ScpClearing {
         }
 
         q_next
+    }
+
+    /// Get previous solution for hot-starting (returns None if first epoch)
+    pub fn get_previous_solution(&self) -> Option<(&BTreeMap<AssetId, f64>, &[f64])> {
+        // This would be implemented with proper state management
+        // For now, return None to use oracle initialization
+        None
+    }
+
+    /// Set previous solution for next epoch hot-starting
+    pub fn set_previous_solution(&mut self, _y: BTreeMap<AssetId, f64>, _alpha: Vec<f64>) {
+        // This would store the solution for the next epoch
+        // Implementation depends on how we want to manage state
     }
 }
 

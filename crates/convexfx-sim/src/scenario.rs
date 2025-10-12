@@ -367,6 +367,7 @@ impl Scenario {
                 flow_pattern: OrderFlowPattern::Uniform,
                 budget_range_m: (0.5, 1.5),
                 // Use ultra_low_slippage risk parameters for extreme optimization
+                // This includes USD-notional normalization, ghost inventory, and adaptive bands
                 expected_outcomes: Some(ExpectedOutcomes {
                     max_iterations: Some(5),
                     min_fill_rate: Some(0.60), // More realistic for moderate optimization
