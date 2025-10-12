@@ -2,8 +2,8 @@
 
 A demo-ready, single-pool FX AMM that clears **batched orders per epoch** by solving a **(sequential) convex optimization** problem to produce a **coherent price vector** and fills.
 
-> ### Where ConvexFX is most competitive (and why)
-> **ConvexFX** wins whenever you need *coherent, fair, multi‑currency pricing* and can batch flow for 30–60s. Instead of quoting pair‑by‑pair curves, ConvexFX clears **all currencies at once** via a convex program, publishing a **single price vector** per epoch with **no triangular arbitrage** and **MEV‑resistant** execution. This is ideal for:
+> ### Where ConvexFX is most competitive 
+> **ConvexFX** wins whenever you need *coherent, fair, multi‑currency pricing*. Instead of quoting pair‑by‑pair curves, ConvexFX clears **all currencies at once** via a convex program, publishing a **single price vector** per epoch with **no triangular arbitrage** and **MEV‑resistant** execution. This is ideal for:
 >
 > - **Long‑tail / exotic corridors** where A→USD→B bridging pays two legs of fee+impact. A single‑pool clear can net flows across many pairs and settle **direct** A↔B at lower all‑in cost.
 > - **Fairness / MEV‑sensitive flows** (payroll batches, B2B payouts, treasuries): one **uniform** clearing price per epoch + commit‑reveal ⇒ no intra‑epoch sandwiching.
@@ -19,9 +19,9 @@ A demo-ready, single-pool FX AMM that clears **batched orders per epoch** by sol
 > - **AMM (USD‑bridged, long‑tail preset):**  
 >   fee 30 bps + impact 20 bps (two shallow pools) + MEV/LVR 15 bps + gas 0.05 bps ≈ **65 bps** AIEC.
 > - **ConvexFX (direct, single pool):**  
->   slippage **≈12–13 bps** in discovery mode + fee **1–3 bps** ⇒ **≈13–15 bps** AIEC, **uniform price**, coherent cross‑rates, and no intra‑epoch MEV.
+>   slippage **≈12–13 bps** in discovery mode + fee **3 bps** ⇒ **≈15 bps** AIEC, **uniform price**, coherent cross‑rates, and no intra‑epoch MEV.
 >
-> For majors with intent/auction routers, ConvexFX is competitive on AIEC while adding coherence and fairness; for thin pairs, it's often **4–5× cheaper** than vanilla AMM routing. See **Market Comparison** below for numbers and methodology.
+> For majors with intent/auction routers, ConvexFX is competitive on AIEC while adding coherence and fairness; for thin pairs, it's often **>5× cheaper** than vanilla AMM routing. See **Market Comparison** below for numbers and methodology.
 
 ## Overview
 
@@ -230,15 +230,6 @@ From the project's scenario table & quick-start outputs:
 * **Majors micro‑spreads & immediacy:** ECNs stream **0.81 bps** full spreads on EUR/USD with continuous fills; ConvexFX batches on a clock. ([CME Group][1])
 * **Small‑size immediacy:** AMMs offer instant fills; ConvexFX batches for fairness/MEV resistance. ([Uniswap Docs][2])
 * **Large‑size depth:** ECNs provide deeper continuous liquidity for institutional clips.
-
----
-
-## Takeaways & next steps
-
-* On **majors**, expect ConvexFX **all-in costs (3–8 bps)** to be **competitive with on‑chain best-execution paths** using intents/auctions, while providing **cross‑pair coherence** and **MEV protection**. Will **not** beat primary ECN micro‑spreads (0.57–0.81 bps) for small clips. ([CME Group][1])
-* On **less‑liquid pairs**, ConvexFX's batch clearing offers **significantly tighter all-in costs** (15 bps vs 65+ bps) than many long‑tail AMM routes, with **zero MEV/LVR costs** and transparent risk control.
-* **Performance is production-ready** (epochs <200 ms) with further optimization potential via the advanced techniques documented in SUMMARY.md.
-* **Next steps**: Deploy to testnets, integrate with existing trading infrastructure, explore multi-venue optimization scenarios.
 
 ---
 
