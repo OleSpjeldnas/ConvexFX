@@ -356,7 +356,7 @@ impl Scenario {
     /// Scenario J: Moderate slippage optimized trading
     pub fn moderate_slippage_trading() -> Self {
         let mut testbed = Testbed::standard_5_asset();
-        testbed.band_bps = 25.0; // Conservative bands for stability
+        testbed.band_bps = 15.0; // Tight bands balance slippage control and fills
 
         Self::new(
             ScenarioConfig {

@@ -302,10 +302,14 @@ impl OrderGenerator {
     fn sample_budget(&self, config: &ScenarioConfig, rng: &mut SimpleRng) -> Amount {
         let (min_m, max_m) = config.budget_range_m;
         let budget_m = min_m + rng.next_f64() * (max_m - min_m);
-        
-        // Convert millions to units (assuming 1M = 1,000,000 base units)
-        let budget_units = (budget_m * 1_000_000.0) as i64;
-        Amount::from_units(budget_units)
+
+        // Budgets are expressed in millions, just like the inventory inputs.
+        // Using `from_units` would scale them up by 1e6 and make every order
+        // several orders of magnitude larger than the available inventory,
+        // forcing the solver to clamp fills near zero. We instead keep the
+        // natural "millions" scale so slippage and fills stay comparable to the
+        // risk configuration.
+        Amount::from_f64(budget_m).expect("valid budget amount")
     }
     
     /// Apply limit orders and min-fill constraints

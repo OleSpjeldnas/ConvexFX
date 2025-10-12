@@ -126,10 +126,16 @@ impl Testbed {
             target_inventory: inventory,
             inventory_bound_factor: (0.8, 1.2),
             band_bps: 20.0,
-            tracking_weights: vec![100.0; 6],
+            // Stronger oracle tracking keeps prices close to mids while still
+            // allowing inventory rebalancing. With order sizes calibrated in
+            // millions, a higher weight helps curb slippage without sacrificing
+            // fills.
+            tracking_weights: vec![250.0; 6],
             daily_vols_pct: daily_vols,
             correlations,
-            risk_lambda: 1.0,
+            // Heavier inventory penalty dampens price drift and slippage while
+            // still allowing substantial flow netting.
+            risk_lambda: 8.0,
             base_fee_bps: 3.0,
             fee_multiplier: 0.5,
             fee_clamp: (0.5, 3.0),

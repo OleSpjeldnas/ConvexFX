@@ -44,7 +44,13 @@ pub struct SimRunner {
 impl SimRunner {
     pub fn new() -> Self {
         Self {
-            clearing: ScpClearing::with_simple_solver(),
+            // Use the production-grade solver so simulations reflect the
+            // slippage and fill characteristics of the real clearing engine.
+            // The simple gradient solver is useful for debugging but tends to
+            // stall on tighter price bands, producing unrealistically low fill
+            // rates. Clarabel/OSQP delivers materially better objective values
+            // and therefore more representative KPIs.
+            clearing: ScpClearing::with_clarabel(),
         }
     }
     
