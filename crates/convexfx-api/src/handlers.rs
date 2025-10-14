@@ -5,7 +5,8 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use convexfx_types::{AssetId, AccountId, PairOrder, Amount, AssetRegistry, AssetInfo};
+use convexfx_types::{AssetId, AccountId, PairOrder, Amount};
+use convexfx_ledger::Ledger;
 use sha2::{Sha256, Digest};
 use hex;
 
@@ -363,14 +364,13 @@ pub async fn add_asset(
 
     // Check if asset already exists
     let mut oracle = state.oracle.lock().unwrap();
-    if oracle.add_asset(symbol.clone(), req.name.clone(), req.initial_price, req.decimals, req.is_base_currency).is_ok() {
-        (StatusCode::OK, Json(AddAssetResponse {
-            success: true,
-            asset_id: symbol,
-            message: format!("Asset {} added successfully", symbol),
-        }))
-    } else {
-        (StatusCode::CONFLICT, Json(serde_json::json!({"error": "Asset already exists or invalid parameters"})))
+    match oracle.add_asset(symbol.clone(), req.name.clone(), req.initial_price, req.decimals, req.is_base_currency) {
+        Ok(_) => (StatusCode::OK, Json(serde_json::json!({
+            "success": true,
+            "asset_id": symbol,
+            "message": format!("Asset {} added successfully", symbol)
+        }))),
+        Err(e) => (StatusCode::CONFLICT, Json(serde_json::json!({"error": format!("{}", e)}))),
     }
 }
 
@@ -397,15 +397,15 @@ pub async fn provide_liquidity(
 
     // Deposit to ledger
     let mut ledger = state.ledger.lock().unwrap();
-    match ledger.deposit(account_id, asset_id, amount) {
+    match ledger.deposit(&account_id, asset_id, amount) {
         Ok(_) => {
             // Get new balance
             let new_balance = ledger.balance(&AccountId::new(req.account_id), asset_id);
-            (StatusCode::OK, Json(ProvideLiquidityResponse {
-                success: true,
-                message: format!("Liquidity provided successfully"),
-                new_balance: new_balance.to_string(),
-            }))
+            (StatusCode::OK, Json(serde_json::json!({
+                "success": true,
+                "message": "Liquidity provided successfully",
+                "new_balance": new_balance.to_string()
+            })))
         }
         Err(e) => (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": format!("Failed to provide liquidity: {}", e)}))),
     }
@@ -420,8 +420,9 @@ pub async fn list_assets(
 
     let mut assets = Vec::new();
     for symbol in registry.get_all_assets() {
-        let info = registry.get_asset_info(symbol).unwrap();
-        let current_price = oracle.prices.get(symbol).copied();
+        let info = registry.get_asset_info(&symbol).unwrap();
+        // For now, we'll set current_price to None since we can't access private prices field
+        let current_price = None;
 
         assets.push(AssetInfoResponse {
             symbol: symbol.to_string(),
@@ -447,11 +448,14 @@ pub async fn get_liquidity(
     let mut liquidity_data = serde_json::Map::new();
     for account in accounts {
         let balances = ledger.account_balances(&account);
-        if !balances.is_empty() {
-            let mut account_balances = serde_json::Map::new();
-            for (asset, amount) in balances {
-                account_balances.insert(asset.to_string(), serde_json::Value::String(amount.to_string()));
-            }
+        let f64_map = balances.to_f64_map();
+
+        let mut account_balances = serde_json::Map::new();
+        for (asset, amount) in f64_map {
+            account_balances.insert(asset.to_string(), serde_json::Value::String(format!("{:.6}", amount)));
+        }
+
+        if !account_balances.is_empty() {
             liquidity_data.insert(account.to_string(), serde_json::Value::Object(account_balances));
         }
     }

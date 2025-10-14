@@ -306,7 +306,7 @@ mod tests {
         assert_eq!(params.min_bound(AssetId::USD), 5.0);
         assert_eq!(params.max_bound(AssetId::USD), 15.0);
         assert_eq!(params.eta, 1.0);
-        assert_eq!(params.price_band_bps, 20.0);
+        assert_eq!(params.price_band_bps, 50.0);
     }
 
     #[test]

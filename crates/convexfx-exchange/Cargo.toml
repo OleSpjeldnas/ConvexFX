@@ -1,0 +1,26 @@
+[package]
+name = "convexfx-exchange"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Core dependencies
+convexfx-types = { path = "../convexfx-types" }
+convexfx-ledger = { path = "../convexfx-ledger" }
+convexfx-oracle = { path = "../convexfx-oracle" }
+convexfx-orders = { path = "../convexfx-orders" }
+convexfx-clearing = { path = "../convexfx-clearing" }
+convexfx-report = { path = "../convexfx-report" }
+convexfx-risk = { path = "../convexfx-risk" }
+
+# Standard library dependencies
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+thiserror = "1.0"
+chrono = { version = "0.4", features = ["serde"] }
+
+[dev-dependencies]
+tempfile = "3.0"
+convexfx-exchange = { path = "." }

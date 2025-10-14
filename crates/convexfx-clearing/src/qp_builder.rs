@@ -27,6 +27,12 @@ impl QpBuilder {
             p_diag[i] = inst.risk.w_diag[i];
         }
 
+        // Add very small regularization to improve numerical stability
+        let regularization = 1e-10;
+        for i in 0..p_diag.len() {
+            p_diag[i] += regularization;
+        }
+
         let p = DMatrix::from_diagonal(&DVector::from_vec(p_diag));
 
         // Build linear term q
@@ -46,7 +52,9 @@ impl QpBuilder {
             let beta_k = (y_j - y_i).exp();
             let budget = order.budget.to_f64();
 
-            q_vec[n_assets + k] = -inst.risk.eta * budget * beta_k;
+            // Clamp beta_k to avoid extreme values that can cause numerical issues
+            let beta_k_clamped = beta_k.max(1e-10).min(1e10);
+            q_vec[n_assets + k] = -inst.risk.eta * budget * beta_k_clamped;
         }
 
         // Build constraint matrix A and bounds l, u
@@ -69,9 +77,14 @@ impl QpBuilder {
             let y_ref = inst.ref_prices.get_ref(*asset);
             let band_half = bands / 10000.0; // Convert bps to decimal
 
+            // For very tight bands, use a more reasonable minimum to avoid numerical issues
+            // but still allow tight constraints to be satisfied
+            let min_band = if band_half < 1e-4 { band_half * 10.0 } else { 1e-6 };
+            let effective_band = band_half.max(min_band);
+
             a_data[row][i] = 1.0;
-            l_vec[row] = y_ref - band_half;
-            u_vec[row] = y_ref + band_half;
+            l_vec[row] = y_ref - effective_band;
+            u_vec[row] = y_ref + effective_band;
             row += 1;
         }
 
@@ -110,4 +123,41 @@ impl QpBuilder {
 
         Ok(QpModel::new(p, DVector::from_vec(q_vec), a, DVector::from_vec(l_vec.clone()), DVector::from_vec(u_vec.clone()), var_meta))
     }
+
+    /// Extract y and alpha from QP solution
+    pub fn extract_solution(
+        solution: &QpSolution,
+        inst: &EpochInstance,
+    ) -> Result<(BTreeMap<AssetId, f64>, Vec<f64>)> {
+        let assets = AssetId::all();
+        let n_assets = assets.len();
+        let n_orders = inst.orders.len();
+
+        // Check for NaN values in solution
+        for (i, &val) in solution.x.iter().enumerate() {
+            if val.is_nan() {
+                println!("NaN found at index {}: {}", i, val);
+                return Err(convexfx_types::ConvexFxError::SolverError(
+                    format!("QP solution contains NaN at index {}", i)
+                ));
+            }
+        }
+
+        // Extract y (log prices)
+        let mut y_new = BTreeMap::new();
+        for (i, asset) in assets.iter().enumerate() {
+            let y_val = solution.x[i];
+            y_new.insert(*asset, y_val);
+        }
+
+        // Extract alpha (fill fractions)
+        let mut alpha_new = Vec::new();
+        for k in 0..n_orders {
+            let alpha_val = solution.x[n_assets + k];
+            alpha_new.push(alpha_val);
+        }
+
+        Ok((y_new, alpha_new))
+    }
+}
 

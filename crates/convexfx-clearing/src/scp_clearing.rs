@@ -158,7 +158,7 @@ impl ScpClearing {
             qp_status = format!("{:?}", solution.status);
 
             // Extract y~ and alpha~ from solution
-            let (y_new, alpha_new) = QpBuilder::extract_solution(&solution, inst)?;
+            let (y_new, alpha_new): (BTreeMap<AssetId, f64>, Vec<f64>) = QpBuilder::extract_solution(&solution, inst)?;
 
             // Simple line search: use full step (λ=1) for now
             // In production, implement backtracking line search for exact nonlinear feasibility
@@ -312,6 +312,7 @@ impl ScpClearing {
             total,
         }
     }
+}
 
 #[cfg(test)]
 mod tests {

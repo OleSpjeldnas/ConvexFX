@@ -1,16 +1,18 @@
-use convexfx_types::{AssetId, EpochId, Result};
+use convexfx_types::{AssetId, EpochId, Result, AssetRegistry};
 use std::collections::BTreeMap;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::sync::Mutex;
 
 use crate::oracle::Oracle;
 use crate::reference_prices::RefPrices;
 
 /// Mock oracle with configurable prices
 /// Useful for testing and demos
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MockOracle {
     prices: BTreeMap<AssetId, f64>,
     band_bps: f64,
+    pub registry: Mutex<AssetRegistry>,
 }
 
 impl MockOracle {
@@ -27,6 +29,7 @@ impl MockOracle {
         MockOracle {
             prices,
             band_bps: 20.0, // ±20 bps default
+            registry: Mutex::new(AssetRegistry::new()),
         }
     }
 
@@ -35,6 +38,7 @@ impl MockOracle {
         MockOracle {
             prices,
             band_bps: 20.0,
+            registry: Mutex::new(AssetRegistry::new()),
         }
     }
 
@@ -47,6 +51,28 @@ impl MockOracle {
     /// Update a price
     pub fn set_price(&mut self, asset: AssetId, price: f64) {
         self.prices.insert(asset, price);
+    }
+
+    /// Add a new asset to the oracle
+    pub fn add_asset(&mut self, symbol: String, name: String, price: f64, decimals: u32, is_base_currency: bool) -> convexfx_types::Result<()> {
+        // Convert symbol to AssetId if it's one of the supported ones
+        let asset_id = match AssetId::from_str(&symbol) {
+            Some(id) => id,
+            None => {
+                // For now, only support the default assets
+                return Err(convexfx_types::ConvexFxError::ConfigError(format!("Unsupported asset: {}", symbol)));
+            }
+        };
+
+        // Add to registry
+        match self.registry.lock().unwrap().add_asset(symbol.clone(), name, decimals, is_base_currency) {
+            Ok(_) => {
+                // Set the price
+                self.prices.insert(asset_id, price);
+                Ok(())
+            }
+            Err(e) => Err(convexfx_types::ConvexFxError::ConfigError(e)),
+        }
     }
 
     /// Get current timestamp in milliseconds

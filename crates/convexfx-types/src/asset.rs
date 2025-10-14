@@ -1,5 +1,88 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fmt;
+
+/// Information about an asset
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AssetInfo {
+    pub name: String,
+    pub decimals: u32,
+    pub is_base_currency: bool,
+}
+
+/// Registry of asset information
+#[derive(Debug, Clone)]
+pub struct AssetRegistry {
+    assets: BTreeMap<String, AssetInfo>,
+}
+
+impl AssetRegistry {
+    pub fn new() -> Self {
+        let mut assets = BTreeMap::new();
+
+        // Add default assets
+        assets.insert("USD".to_string(), AssetInfo {
+            name: "US Dollar".to_string(),
+            decimals: 2,
+            is_base_currency: true,
+        });
+        assets.insert("EUR".to_string(), AssetInfo {
+            name: "Euro".to_string(),
+            decimals: 2,
+            is_base_currency: false,
+        });
+        assets.insert("JPY".to_string(), AssetInfo {
+            name: "Japanese Yen".to_string(),
+            decimals: 0,
+            is_base_currency: false,
+        });
+        assets.insert("GBP".to_string(), AssetInfo {
+            name: "British Pound".to_string(),
+            decimals: 2,
+            is_base_currency: false,
+        });
+        assets.insert("CHF".to_string(), AssetInfo {
+            name: "Swiss Franc".to_string(),
+            decimals: 2,
+            is_base_currency: false,
+        });
+        assets.insert("AUD".to_string(), AssetInfo {
+            name: "Australian Dollar".to_string(),
+            decimals: 2,
+            is_base_currency: false,
+        });
+
+        AssetRegistry { assets }
+    }
+
+    pub fn get_all_assets(&self) -> Vec<String> {
+        self.assets.keys().cloned().collect()
+    }
+
+    pub fn get_asset_info(&self, symbol: &str) -> Option<&AssetInfo> {
+        self.assets.get(symbol)
+    }
+
+    pub fn add_asset(&mut self, symbol: String, name: String, decimals: u32, is_base_currency: bool) -> Result<(), String> {
+        if self.assets.contains_key(&symbol) {
+            return Err(format!("Asset {} already exists", symbol));
+        }
+
+        self.assets.insert(symbol.clone(), AssetInfo {
+            name,
+            decimals,
+            is_base_currency,
+        });
+
+        Ok(())
+    }
+}
+
+impl Default for AssetRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 /// Supported asset identifiers in the FX pool
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
