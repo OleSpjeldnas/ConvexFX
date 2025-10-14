@@ -16,6 +16,10 @@ path = "delta_integration.rs"
 name = "delta_demo"
 path = "delta_demo.rs"
 
+[[example]]
+name = "delta_stress_test"
+path = "delta_stress_test.rs"
+
 [dependencies]
 convexfx-clearing = { path = "../crates/convexfx-clearing" }
 convexfx-oracle = { path = "../crates/convexfx-oracle" }
