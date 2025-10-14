@@ -13,6 +13,7 @@ members = [
     "crates/convexfx-api",
     "crates/convexfx-sim",
     "crates/convexfx-exchange",
+    "crates/convexfx-delta",
     "crates/convexfx-integration-tests",
     "examples",
 ]
@@ -54,9 +55,9 @@ criterion = "0.5"
 sha2 = "0.10"
 hex = "0.4"
 
-# Delta network integration (commented out until protoc is available)
-# delta_base_sdk = { version = "=0.5.5", registry = "delta" }
-# delta_executor_sdk = { version = "=0.5.5", registry = "delta" }
+# Delta network integration
+delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+delta_executor_sdk = { version = "=0.5.5", registry = "delta" }
 
 [registries.delta]
 index = "sparse+https://crates.repyhlabs.dev/api/v1/crates/"

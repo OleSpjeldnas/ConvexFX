@@ -8,18 +8,25 @@ publish = false
 name = "simple_clearing"
 path = "simple_clearing.rs"
 
-# [[example]]
-# name = "delta_integration"
-# path = "delta_integration.rs"
+[[example]]
+name = "delta_integration"
+path = "delta_integration.rs"
+
+[[example]]
+name = "delta_demo"
+path = "delta_demo.rs"
 
 [dependencies]
 convexfx-clearing = { path = "../crates/convexfx-clearing" }
 convexfx-oracle = { path = "../crates/convexfx-oracle" }
 convexfx-risk = { path = "../crates/convexfx-risk" }
 convexfx-types = { path = "../crates/convexfx-types" }
+convexfx-exchange = { path = "../crates/convexfx-exchange" }
+convexfx-delta = { path = "../crates/convexfx-delta" }
 serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
 
-# Delta network integration (commented out until protoc is available)
-# delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+# Delta network integration
+delta_base_sdk = { version = "=0.5.5", registry = "delta" }
 
 

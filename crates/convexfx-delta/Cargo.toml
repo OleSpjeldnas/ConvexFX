@@ -1,0 +1,17 @@
+[package]
+name = "convexfx-delta"
+version = "0.1.0"
+edition = "2021"
+
+[[test]]
+name = "integration_test"
+path = "tests/integration_test.rs"
+
+[dependencies]
+convexfx-types = { path = "../convexfx-types" }
+convexfx-exchange = { path = "../convexfx-exchange" }
+delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+tokio = { version = "1.0", features = ["full"] }

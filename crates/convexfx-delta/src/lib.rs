@@ -1,0 +1,86 @@
+use convexfx_types::{AccountId, AssetId, Amount, PairOrder};
+use convexfx_exchange;
+use delta_base_sdk::{
+    vaults::{OwnerId, VaultId},
+    crypto::{HashDigest},
+};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
+
+// Simplified verifiable types for demo (since they don't exist in this SDK version)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifiableType {
+    pub swap_message: Option<SwapMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SwapMessage {
+    pub owner: OwnerId,
+    pub pay_asset: String,
+    pub receive_asset: String,
+    pub budget: String,
+    pub limit_ratio: Option<f64>,
+    pub min_fill_fraction: Option<f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerifiableWithDiffs {
+    pub verifiable: VerifiableType,
+    pub state_diffs: Vec<StateDiff>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StateDiff {
+    pub transitions: Vec<StateTransition>,
+    pub metadata: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StateTransition {
+    pub vault_id: VaultId,
+    pub asset_id: String,
+    pub amount: i64,
+    pub nonce: u64,
+}
+
+/// Delta-compatible message types that bridge between Delta and ConvexFX
+pub mod messages;
+/// Delta state management and vault operations
+pub mod state;
+/// Delta runtime adapter that uses ConvexFX as execution engine
+pub mod runtime_adapter;
+/// SDL (State Diff List) generation from ConvexFX results
+pub mod sdl_generator;
+
+pub use messages::*;
+pub use state::*;
+pub use runtime_adapter::*;
+pub use sdl_generator::*;
+
+/// Error types for Delta integration
+#[derive(Debug, thiserror::Error)]
+pub enum DeltaIntegrationError {
+    #[error("Invalid message format: {0}")]
+    InvalidMessage(String),
+
+    #[error("Asset not found: {0}")]
+    AssetNotFound(String),
+
+    #[error("Insufficient vault balance")]
+    InsufficientBalance,
+
+    #[error("Delta SDK error: {0}")]
+    DeltaSdk(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
+
+    #[error("ConvexFX error: {0}")]
+    ConvexFx(String),
+
+    #[error("Exchange error: {0}")]
+    Exchange(#[from] convexfx_exchange::ExchangeError),
+}
+
+/// Result type for Delta integration operations
+pub type Result<T> = std::result::Result<T, DeltaIntegrationError>;
