@@ -1,0 +1,19 @@
+[package]
+name = "convexfx-sp1-program"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+sp1-zkvm = { version = "3.0.0", default-features = false }
+
+[[bin]]
+name = "convexfx-sp1-program"
+path = "src/main.rs"
+
+[workspace]
+members = []
+
+[profile.release]
+opt-level = 3
+lto = true
+

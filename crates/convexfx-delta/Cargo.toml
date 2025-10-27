@@ -54,5 +54,14 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 shellexpand = "3.1"
 env_logger = "0.11"
 
+# SP1 proving system (optional for production)
+sp1-sdk = { version = "3.0.0", optional = true }
+
+[features]
+default = []
+runtime = ["dep:actix-web", "clap"]
+demo = ["clap"]
+sp1 = ["dep:sp1-sdk"]  # Enable with --features sp1 for production proving
+
 [dev-dependencies]
 tempfile = "3.0"

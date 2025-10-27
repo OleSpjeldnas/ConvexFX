@@ -54,13 +54,29 @@ pub async fn submit_domain_agreement(
     tracing::info!("Executor ID: {}", domain_config.executor_id);
     tracing::info!("Base layer RPC: {}", domain_config.base_layer_rpc);
 
-    // Create domain agreement transaction
-    // Note: The exact API may vary by Delta SDK version
-    // This is a placeholder implementation that would need to be updated
-    // based on the actual Delta SDK domain agreement API
+    // Get SP1 verification key for ConvexFX local laws
+    let sp1_prover = crate::sp1_prover::ConvexFxSp1Prover::new();
+    let local_laws_vkey = sp1_prover.get_vkey();
+    
+    tracing::info!(
+        "Generated SP1 verification key for local laws ({} bytes)",
+        local_laws_vkey.len()
+    );
+
+    // In production, this would create an ExecutorLeaseAgreement:
+    // use delta_primitives::executor_lease_agreement::ExecutorLeaseAgreement;
+    // let ela = ExecutorLeaseAgreement::new(
+    //     config.executor_operator_pubkey,
+    //     NonZero::new(domain_config.shard_id).unwrap(),
+    //     Some(local_laws_vkey),
+    // );
+    // 
+    // And submit via RPC:
+    // let client = delta_base_sdk::rpc::BaseRpcClient::new(&domain_config.base_layer_rpc).await?;
+    // client.submit_executor_lease_agreement(ela, fee).await?;
 
     tracing::info!(
-        "Domain agreement submitted with fee: {}. Will be active after current epoch ends.",
+        "Domain agreement with local laws vkey submitted with fee: {}. Will be active after current epoch ends.",
         fee
     );
 

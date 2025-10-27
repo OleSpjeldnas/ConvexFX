@@ -31,6 +31,6 @@ serde_json = "1.0"
 tokio = { version = "1.0", features = ["full"] }
 
 # Delta network integration
-delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+delta_base_sdk = { version = "=0.5.10", registry = "delta" }
 
 

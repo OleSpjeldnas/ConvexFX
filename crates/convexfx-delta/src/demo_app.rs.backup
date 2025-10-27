@@ -1,0 +1,300 @@
+//! Demo application for ConvexFX Delta executor
+//!
+//! This module provides a standalone demo that allows users to:
+//! - Register vaults with initial funding
+//! - Create and sign messages to spend tokens
+//! - Process messages and update local state
+//! - Generate SDLs from state changes
+//!
+//! This demo focuses on the core executor logic without requiring
+//! Delta blockchain connectivity or domain agreements.
+
+use crate::DeltaIntegrationError;
+use convexfx_clearing::{EpochInstance, ScpClearing};
+use convexfx_exchange::{Exchange, ExchangeConfig};
+use convexfx_oracle::RefPrices;
+use convexfx_risk::RiskParams;
+use convexfx_types::{AccountId, Amount, AssetId, Fill, PairOrder};
+use serde_json::json;
+use std::collections::BTreeMap;
+use std::sync::{Arc, RwLock};
+use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Demo vault manager for local state management
+#[derive(Debug)]
+pub struct DemoVaultManager {
+    /// Mapping of user IDs to their vault balances
+    user_balances: Arc<RwLock<BTreeMap<String, BTreeMap<String, i64>>>>,
+}
+
+impl DemoVaultManager {
+    /// Create a new demo vault manager
+    pub fn new() -> Self {
+        Self {
+            user_balances: Arc::new(RwLock::new(BTreeMap::new())),
+        }
+    }
+
+    /// Register a new user with initial funding
+    pub fn register_user(&self, user_id: &str, initial_funding: BTreeMap<String, i64>) -> Result<()> {
+        let mut balances = self.user_balances.write().unwrap();
+        balances.insert(user_id.to_string(), initial_funding);
+        Ok(())
+    }
+
+    /// Get user balance
+    pub fn get_balance(&self, user_id: &str, asset: &str) -> Result<i64> {
+        let balances = self.user_balances.read().unwrap();
+        let user_balance = balances.get(user_id)
+            .ok_or_else(|| DeltaIntegrationError::InvalidMessage("User not registered".to_string()))?;
+
+        Ok(*user_balance.get(asset).unwrap_or(&0))
+    }
+
+    /// Create a signed transfer message
+    pub fn create_transfer(
+        &self,
+        from_user: &str,
+        to_user: &str,
+        amount: i64,
+        asset: &str,
+    ) -> Result<String> {
+        // Simple transfer representation for demo
+        let transfer_id = format!("transfer_{}_{}", from_user, to_user);
+        Ok(transfer_id)
+    }
+
+    /// Process a transfer and update balances
+    pub fn process_transfer(&self, from_user: &str, to_user: &str, amount: i64, asset: &str) -> Result<()> {
+        let mut balances = self.user_balances.write().unwrap();
+
+        // Check from_user has sufficient balance
+        let from_balance = balances.get(from_user)
+            .and_then(|b| b.get(asset))
+            .copied()
+            .unwrap_or(0);
+
+        if from_balance < amount {
+            return Err(DeltaIntegrationError::InsufficientBalance);
+        }
+
+        // Debit from sender
+        if let Some(from_assets) = balances.get_mut(from_user) {
+            *from_assets.entry(asset.to_string()).or_insert(0) -= amount;
+        }
+
+        // Credit to receiver
+        if let Some(to_assets) = balances.get_mut(to_user) {
+            *to_assets.entry(asset.to_string()).or_insert(0) += amount;
+        } else {
+            let mut new_assets = BTreeMap::new();
+            new_assets.insert(asset.to_string(), amount);
+            balances.insert(to_user.to_string(), new_assets);
+        }
+
+        Ok(())
+    }
+
+    /// Process swap message and update vault balances
+    fn process_swap_message(&self, swap_msg: &crate::SwapMessage) -> Result<Vec<crate::StateDiff>> {
+        let mut state_diffs = Vec::new();
+
+        // For demo purposes, create a simple transfer
+        // In a real implementation, this would:
+        // 1. Validate the swap against available liquidity
+        // 2. Execute the swap through ConvexFX clearing
+        // 3. Generate proper state diffs
+
+        // Create debit operation for pay asset
+        let from_vault_id = VaultId::from((swap_msg.owner.clone(), 0));
+        state_diffs.push(crate::StateDiff {
+            transitions: vec![
+                crate::StateTransition {
+                    vault_id: from_vault_id.clone(),
+                    asset_id: swap_msg.pay_asset.clone(),
+                    amount: -1000, // Debit 1000 units
+                    nonce: 0,
+                }
+            ],
+            metadata: json!({
+                "demo_swap": {
+                    "pay_asset": swap_msg.pay_asset,
+                    "receive_asset": swap_msg.receive_asset,
+                    "amount": 1000,
+                }
+            }),
+        });
+
+        // Create credit operation for receive asset
+        let to_vault_id = VaultId::from((OwnerId::default(), 0)); // Demo recipient
+        state_diffs.push(crate::StateDiff {
+            transitions: vec![
+                crate::StateTransition {
+                    vault_id: to_vault_id,
+                    asset_id: swap_msg.receive_asset.clone(),
+                    amount: 950, // Credit 950 units (after fees)
+                    nonce: 0,
+                }
+            ],
+            metadata: json!({
+                "demo_swap_credit": {
+                    "asset": swap_msg.receive_asset,
+                    "amount": 950,
+                }
+            }),
+        });
+
+        // Update local state
+        self.apply_state_diffs(&state_diffs)?;
+
+        Ok(state_diffs)
+    }
+
+    /// Apply state diffs to local vault state
+    fn apply_state_diffs(&self, state_diffs: &[crate::StateDiff]) -> Result<()> {
+        let mut vaults = self.vaults.write().unwrap();
+
+        for diff in state_diffs {
+            for transition in &diff.transitions {
+                let vault = vaults.entry(transition.vault_id.clone()).or_insert_with(BTreeMap::new);
+                let current_balance = *vault.get(&transition.asset_id).unwrap_or(&0);
+                let new_balance = current_balance + transition.amount;
+
+                if new_balance < 0 {
+                    return Err(DeltaIntegrationError::InsufficientBalance);
+                }
+
+                vault.insert(transition.asset_id.clone(), new_balance);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get all vault balances
+    pub fn get_all_balances(&self) -> Result<BTreeMap<VaultId, BTreeMap<String, i64>>> {
+        Ok(self.vaults.read().unwrap().clone())
+    }
+}
+
+/// Demo application main interface
+pub struct DemoApp {
+    vault_manager: DemoVaultManager,
+    exchange: Exchange,
+    clearing_engine: ScpClearing,
+    current_epoch: Arc<RwLock<u64>>,
+}
+
+impl DemoApp {
+    /// Create a new demo application
+    pub fn new() -> Result<Self> {
+        let exchange = Exchange::new(ExchangeConfig::default())?;
+        let clearing_engine = ScpClearing::with_simple_solver();
+
+        Ok(Self {
+            vault_manager: DemoVaultManager::new(),
+            exchange,
+            clearing_engine,
+            current_epoch: Arc::new(RwLock::new(0)),
+        })
+    }
+
+    /// Register a new user with initial funding
+    pub fn register_user(&self, user_id: &str) -> Result<()> {
+        // Give each new user some initial funding
+        let initial_funding = [
+            ("USD".to_string(), 10000),
+            ("EUR".to_string(), 5000),
+            ("JPY".to_string(), 1000000),
+        ].iter().cloned().collect();
+
+        self.vault_manager.register_user(user_id, initial_funding)
+    }
+
+    /// Get user balance
+    pub fn get_balance(&self, user_id: &str, asset: &str) -> Result<i64> {
+        self.vault_manager.get_balance(user_id, asset)
+    }
+
+    /// Create and process a transfer
+    pub fn transfer(&self, from_user: &str, to_user: &str, amount: i64, asset: &str) -> Result<()> {
+        // Check sender has sufficient balance
+        let sender_balance = self.get_balance(from_user, asset)?;
+        if sender_balance < amount {
+            return Err(DeltaIntegrationError::InsufficientBalance);
+        }
+
+        // Process the transfer
+        self.vault_manager.process_transfer(from_user, to_user, amount, asset)
+    }
+
+    /// Execute orders through ConvexFX clearing
+    pub fn execute_orders(&self, orders: Vec<PairOrder>) -> Result<Vec<Fill>> {
+        if orders.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Get current prices from exchange
+        let prices = self.exchange.get_current_prices()
+            .map_err(|e| DeltaIntegrationError::ConvexFx(format!("Failed to get prices: {:?}", e)))?;
+
+        let total_liquidity = self.exchange.get_total_liquidity()
+            .map_err(|e| DeltaIntegrationError::ConvexFx(format!("Failed to get liquidity: {:?}", e)))?;
+
+        // Convert to log prices (y_ref)
+        let mut y_ref = BTreeMap::new();
+        for (asset_str, price) in prices {
+            if let Some(asset_id) = AssetId::from_str(&asset_str) {
+                let log_price = if asset_id == AssetId::USD {
+                    0.0
+                } else {
+                    price.ln()
+                };
+                y_ref.insert(asset_id, log_price);
+            }
+        }
+
+        // Convert liquidity inventory
+        let mut inventory = BTreeMap::new();
+        for (asset_str, amount) in total_liquidity {
+            if let Some(asset_id) = AssetId::from_str(&asset_str) {
+                inventory.insert(asset_id, amount);
+            }
+        }
+
+        // Create RefPrices object
+        let timestamp_ms = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
+        let ref_prices = RefPrices::new(
+            y_ref,
+            20.0,
+            timestamp_ms,
+            vec!["demo_exchange".to_string()],
+        );
+
+        let epoch_id = *self.current_epoch.read().unwrap();
+        let risk_params = RiskParams::default_demo();
+
+        let instance = EpochInstance::new(
+            epoch_id,
+            inventory,
+            orders,
+            ref_prices,
+            risk_params,
+        );
+
+        let solution = self.clearing_engine.clear_epoch(&instance)
+            .map_err(|e| DeltaIntegrationError::ConvexFx(format!("Clearing failed: {:?}", e)))?;
+
+        // Increment epoch
+        *self.current_epoch.write().unwrap() += 1;
+
+        Ok(solution.fills)
+    }
+
+    /// Get all user balances
+    pub fn get_all_balances(&self) -> Result<BTreeMap<String, BTreeMap<String, i64>>> {
+        // For demo, return user balances (simplified from vault structure)
+        let user_balances = self.vault_manager.user_balances.read().unwrap().clone();
+        Ok(user_balances)
+    }
+}

@@ -9,13 +9,13 @@
 //! This demo focuses on the core executor logic without requiring
 //! Delta blockchain connectivity or domain agreements.
 
-use crate::DeltaIntegrationError;
+use crate::{DeltaIntegrationError, Result};
 use convexfx_clearing::{EpochInstance, ScpClearing};
 use convexfx_exchange::{Exchange, ExchangeConfig};
 use convexfx_oracle::RefPrices;
 use convexfx_risk::RiskParams;
 use convexfx_types::{AccountId, Amount, AssetId, Fill, PairOrder};
-use delta_base_sdk::vaults::TokenKind;
+use delta_base_sdk::vaults::{TokenKind, OwnerId, VaultId};
 use delta_crypto::{
     ed25519::{PrivKey, PubKey},
     messages::SignedMessage,
@@ -38,7 +38,11 @@ pub struct DemoVaultManager {
     /// Mapping of user IDs to their cryptographic keypairs
     user_keys: Arc<RwLock<BTreeMap<String, PrivKey>>>,
     /// Mapping of vault IDs to nonces
-    nonces: Arc<RwLock<BTreeMap<delta_base_sdk::vaults::VaultId, u64>>>,
+    nonces: Arc<RwLock<BTreeMap<VaultId, u64>>>,
+    /// Mapping of user IDs to their Delta OwnerId
+    user_owners: Arc<RwLock<BTreeMap<String, OwnerId>>>,
+    /// Mapping of user IDs to their ConvexFX AccountId
+    user_accounts: Arc<RwLock<BTreeMap<String, AccountId>>>,
 }
 
 impl DemoVaultManager {
@@ -48,44 +52,82 @@ impl DemoVaultManager {
             balances: Arc::new(RwLock::new(BTreeMap::new())),
             user_keys: Arc::new(RwLock::new(BTreeMap::new())),
             nonces: Arc::new(RwLock::new(BTreeMap::new())),
+            user_owners: Arc::new(RwLock::new(BTreeMap::new())),
+            user_accounts: Arc::new(RwLock::new(BTreeMap::new())),
         }
     }
 
     /// Register a new user with initial funding
-    pub fn register_user(&self, user_id: &str, initial_funding: BTreeMap<String, i64>) -> std::result::Result<(), DeltaIntegrationError> {
+    pub fn register_user(&self, user_id: &str, initial_funding: BTreeMap<String, i64>) -> Result<()> {
         let mut balances = self.balances.write().unwrap();
         balances.insert(user_id.to_string(), initial_funding.clone());
 
         // Generate a keypair for the user
         let priv_key = PrivKey::generate();
+        let pub_key = priv_key.pub_key();
+        let owner_id = OwnerId::from(pub_key.to_bytes());
+        let vault_id = VaultId::from((owner_id, 0));
+        
+        // Create ConvexFX account
+        let account = AccountId::new(user_id.to_string());
+
+        // Store all mappings
         let mut keys = self.user_keys.write().unwrap();
         keys.insert(user_id.to_string(), priv_key);
+        drop(keys);
+
+        let mut owners = self.user_owners.write().unwrap();
+        owners.insert(user_id.to_string(), owner_id);
+        drop(owners);
+
+        let mut accounts = self.user_accounts.write().unwrap();
+        accounts.insert(user_id.to_string(), account);
+        drop(accounts);
 
         // Initialize nonce for user's vault
-        if let Some(user_priv_key) = keys.get(user_id) {
-            let owner_id = delta_base_sdk::vaults::OwnerId::from(user_priv_key.pub_key().to_bytes());
-            let vault_id = delta_base_sdk::vaults::VaultId::from((owner_id, 0));
-            let mut nonces = self.nonces.write().unwrap();
-            nonces.insert(vault_id, 0);
-        }
+        let mut nonces = self.nonces.write().unwrap();
+        nonces.insert(vault_id, 0);
 
         Ok(())
     }
 
-    /// Create a vault for a user
-    pub fn create_vault(&self, user_id: &str, initial_funding: BTreeMap<String, i64>) -> std::result::Result<delta_base_sdk::vaults::VaultId, DeltaIntegrationError> {
-        let keys = self.user_keys.read().unwrap();
-        let priv_key = keys.get(user_id)
-            .ok_or_else(|| DeltaIntegrationError::InvalidMessage("User not registered".to_string()))?.clone();
+    /// Get the Delta OwnerId for a user
+    pub fn get_owner_id(&self, user_id: &str) -> Result<OwnerId> {
+        let owners = self.user_owners.read().unwrap();
+        owners.get(user_id)
+            .copied()
+            .ok_or_else(|| DeltaIntegrationError::InvalidMessage("User not registered".to_string()))
+    }
 
-        let owner_id = delta_base_sdk::vaults::OwnerId::from(priv_key.pub_key().to_bytes());
-        let vault_id = delta_base_sdk::vaults::VaultId::from((owner_id, 0));
+    /// Get the ConvexFX AccountId for a user
+    pub fn get_account_id(&self, user_id: &str) -> Result<AccountId> {
+        let accounts = self.user_accounts.read().unwrap();
+        accounts.get(user_id)
+            .cloned()
+            .ok_or_else(|| DeltaIntegrationError::InvalidMessage("User not registered".to_string()))
+    }
 
-        // Initialize nonce if not already done
+    /// Get the VaultId for a user
+    pub fn get_vault_id(&self, user_id: &str) -> Result<VaultId> {
+        let owner_id = self.get_owner_id(user_id)?;
+        Ok(VaultId::from((owner_id, 0)))
+    }
+
+    /// Get the current nonce for a user's vault
+    pub fn get_vault_nonce(&self, user_id: &str) -> Result<u64> {
+        let vault_id = self.get_vault_id(user_id)?;
+        let nonces = self.nonces.read().unwrap();
+        Ok(nonces.get(&vault_id).copied().unwrap_or(0))
+    }
+
+    /// Increment vault nonce for a user
+    pub fn increment_vault_nonce(&self, user_id: &str) -> Result<u64> {
+        let vault_id = self.get_vault_id(user_id)?;
         let mut nonces = self.nonces.write().unwrap();
-        nonces.entry(vault_id).or_insert(0);
-
-        Ok(vault_id)
+        let current_nonce = nonces.get(&vault_id).copied().unwrap_or(0);
+        let new_nonce = current_nonce + 1;
+        nonces.insert(vault_id, new_nonce);
+        Ok(new_nonce)
     }
 
     /// Get user balance
@@ -194,19 +236,22 @@ pub struct DemoApp {
     exchange: Exchange,
     clearing_engine: ScpClearing,
     current_epoch: Arc<RwLock<u64>>,
+    sdl_generator: crate::sdl_generator::SdlGenerator,
 }
 
 impl DemoApp {
     /// Create a new demo application
-    pub fn new() -> std::result::Result<Self, DeltaIntegrationError> {
+    pub fn new() -> Result<Self> {
         let exchange = Exchange::new(ExchangeConfig::default())?;
         let clearing_engine = ScpClearing::with_simple_solver();
+        let sdl_generator = crate::sdl_generator::SdlGenerator::new();
 
         let app = Self {
             vault_manager: DemoVaultManager::new(),
             exchange,
             clearing_engine,
             current_epoch: Arc::new(RwLock::new(0)),
+            sdl_generator,
         };
 
         // Pre-register demo users
@@ -218,7 +263,7 @@ impl DemoApp {
     }
 
     /// Register a new user with initial funding
-    pub fn register_user(&self, user_id: &str) -> std::result::Result<(), DeltaIntegrationError> {
+    pub fn register_user(&self, user_id: &str) -> Result<()> {
         // Fund with 6 assets - Each user gets $100,000 worth of each currency
         // This creates a moderate-sized pool (~$2M total) to show realistic pricing
         let initial_funding: BTreeMap<String, i64> = [
@@ -231,9 +276,6 @@ impl DemoApp {
         ].iter().cloned().collect();
 
         self.vault_manager.register_user(user_id, initial_funding.clone())?;
-
-        // Also create the vault for the user
-        let _vault_id = self.vault_manager.create_vault(user_id, initial_funding)?;
 
         Ok(())
     }
@@ -248,10 +290,10 @@ impl DemoApp {
         self.vault_manager.transfer(from_user, to_user, amount, asset)
     }
 
-    /// Execute orders through ConvexFX clearing
-    pub fn execute_orders(&self, orders: Vec<PairOrder>) -> std::result::Result<Vec<Fill>, DeltaIntegrationError> {
+    /// Execute orders through ConvexFX clearing and generate SDLs
+    pub fn execute_orders(&self, orders: Vec<PairOrder>) -> Result<(Vec<Fill>, Vec<delta_primitives::diff::StateDiff>)> {
         if orders.is_empty() {
-            return Ok(Vec::new());
+            return Ok((Vec::new(), Vec::new()));
         }
 
         // Get current prices from exchange
@@ -297,7 +339,7 @@ impl DemoApp {
         let instance = EpochInstance::new(
             epoch_id,
             inventory,
-            orders,
+            orders.clone(),
             ref_prices,
             risk_params,
         );
@@ -305,10 +347,44 @@ impl DemoApp {
         let solution = self.clearing_engine.clear_epoch(&instance)
             .map_err(|e| DeltaIntegrationError::ConvexFx(format!("Clearing failed: {:?}", e)))?;
 
+        // Validate clearing solution with SCP validity predicate
+        let predicate = crate::predicates::ScpClearingValidityPredicate::default();
+        let predicate_context = crate::predicates::PredicateContext {
+            oracle_prices: &ref_prices,
+            initial_inventory: &inventory,
+        };
+        predicate.validate(&solution, &predicate_context)?;
+
+        // Generate SP1 proof that local laws were satisfied
+        // This proves the clearing solution is valid according to ConvexFX rules
+        let sp1_prover = crate::sp1_prover::ConvexFxSp1Prover::new();
+        let _proof = sp1_prover.prove_clearing(&solution, &inventory)?;
+        tracing::info!("Generated SP1 proof for clearing solution (epoch {})", solution.epoch_id);
+
         // Increment epoch
         *self.current_epoch.write().unwrap() += 1;
 
-        Ok(solution.fills)
+        // Generate state diffs from fills
+        let mut sdl_generator = crate::sdl_generator::SdlGenerator::new();
+        
+        // Register all users with the SDL generator
+        for user_id in &["alice", "bob", "charlie"] {
+            if let Ok(owner_id) = self.vault_manager.get_owner_id(user_id) {
+                if let Ok(account_id) = self.vault_manager.get_account_id(user_id) {
+                    sdl_generator.register_account(account_id, owner_id);
+                }
+                if let Ok(vault_id) = self.vault_manager.get_vault_id(user_id) {
+                    if let Ok(nonce) = self.vault_manager.get_vault_nonce(user_id) {
+                        sdl_generator.register_vault(vault_id, nonce);
+                    }
+                }
+            }
+        }
+
+        // Generate state diffs from fills
+        let state_diffs = sdl_generator.generate_sdl_from_fills(solution.fills.clone(), epoch_id)?;
+
+        Ok((solution.fills, state_diffs))
     }
 
     /// Get all user balances
@@ -410,3 +486,4 @@ impl DemoApp {
         Ok((recv_amount, price_impact))
     }
 }
+

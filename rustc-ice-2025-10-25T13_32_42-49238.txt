@@ -1,0 +1,43 @@
+thread 'rustc' panicked at compiler/rustc_metadata/src/rmeta/decoder.rs:991:9:
+Box<dyn Any>
+stack backtrace:
+   0:        0x10eb95668 - std::backtrace::Backtrace::create::h10ded6fed4296801
+   1:        0x10cbb2f90 - std[4d00d41acebae0d6]::panicking::update_hook::<alloc[635a743f54a1377b]::boxed::Box<rustc_driver_impl[8d1b5512bf1a4227]::install_ice_hook::{closure#1}>>::{closure#0}
+   2:        0x10eb96594 - std::panicking::panic_with_hook::hd1478b3c9db13164
+   3:        0x10cc34bd0 - std[4d00d41acebae0d6]::panicking::begin_panic::<rustc_errors[4383b5ac84ba9a2]::ExplicitBug>::{closure#0}
+   4:        0x10cc21754 - std[4d00d41acebae0d6]::sys::backtrace::__rust_end_short_backtrace::<std[4d00d41acebae0d6]::panicking::begin_panic<rustc_errors[4383b5ac84ba9a2]::ExplicitBug>::{closure#0}, !>
+   5:        0x111962cf8 - std[4d00d41acebae0d6]::panicking::begin_panic::<rustc_errors[4383b5ac84ba9a2]::ExplicitBug>
+   6:        0x1119638e0 - <rustc_errors[4383b5ac84ba9a2]::diagnostic::BugAbort as rustc_errors[4383b5ac84ba9a2]::diagnostic::EmissionGuarantee>::emit_producing_guarantee
+   7:        0x1119d0760 - rustc_middle[18882d423828fdda]::util::bug::opt_span_bug_fmt::<rustc_span[ba970de6db17e6ad]::span_encoding::Span>::{closure#0}
+   8:        0x10d7fd0a4 - rustc_middle[18882d423828fdda]::ty::context::tls::with_opt::<rustc_middle[18882d423828fdda]::util::bug::opt_span_bug_fmt<rustc_span[ba970de6db17e6ad]::span_encoding::Span>::{closure#0}, !>::{closure#0}
+   9:        0x10d7d1e9c - rustc_middle[18882d423828fdda]::ty::context::tls::with_context_opt::<rustc_middle[18882d423828fdda]::ty::context::tls::with_opt<rustc_middle[18882d423828fdda]::util::bug::opt_span_bug_fmt<rustc_span[ba970de6db17e6ad]::span_encoding::Span>::{closure#0}, !>::{closure#0}, !>
+  10:        0x1119d4a88 - rustc_middle[18882d423828fdda]::util::bug::bug_fmt
+  11:        0x1119bc090 - <rustc_metadata[2d56b3aa44aaf8ba]::creader::CrateMetadataRef>::missing
+  12:        0x10d7235e4 - <rustc_metadata[2d56b3aa44aaf8ba]::creader::CrateMetadataRef>::get_associated_item_or_field_def_ids
+  13:        0x10d74f128 - rustc_metadata[2d56b3aa44aaf8ba]::rmeta::decoder::cstore_impl::provide_extern::associated_item_def_ids
+  14:        0x10e051798 - rustc_query_impl[2712bf0e30d5291f]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2712bf0e30d5291f]::query_impl::associated_item_def_ids::dynamic_query::{closure#2}::{closure#0}, rustc_middle[18882d423828fdda]::query::erase::Erased<[u8; 16usize]>>
+  15:        0x10e08597c - rustc_query_system[95b1cf4b1cf05fd3]::query::plumbing::try_execute_query::<rustc_query_impl[2712bf0e30d5291f]::DynamicConfig<rustc_query_system[95b1cf4b1cf05fd3]::query::caches::DefIdCache<rustc_middle[18882d423828fdda]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[2712bf0e30d5291f]::plumbing::QueryCtxt, true>
+  16:        0x10e1fabac - rustc_query_impl[2712bf0e30d5291f]::query_impl::associated_item_def_ids::get_query_incr::__rust_end_short_backtrace
+  17:        0x10e45c9a4 - <rustc_resolve[64bdb4259251ee52]::Resolver>::report_privacy_error
+  18:        0x10e3f4834 - <rustc_resolve[64bdb4259251ee52]::Resolver>::resolve_crate::{closure#0}
+  19:        0x10e4720d4 - <rustc_resolve[64bdb4259251ee52]::Resolver>::resolve_crate
+  20:        0x10d4ac48c - rustc_interface[1fe14d92365ecd6b]::passes::configure_and_expand
+  21:        0x10d4ad2f8 - rustc_interface[1fe14d92365ecd6b]::passes::resolver_for_lowering_raw
+  22:        0x10e0526c0 - rustc_query_impl[2712bf0e30d5291f]::plumbing::__rust_begin_short_backtrace::<rustc_query_impl[2712bf0e30d5291f]::query_impl::resolver_for_lowering_raw::dynamic_query::{closure#2}::{closure#0}, rustc_middle[18882d423828fdda]::query::erase::Erased<[u8; 16usize]>>
+  23:        0x10e09be18 - rustc_query_system[95b1cf4b1cf05fd3]::query::plumbing::try_execute_query::<rustc_query_impl[2712bf0e30d5291f]::DynamicConfig<rustc_query_system[95b1cf4b1cf05fd3]::query::caches::SingleCache<rustc_middle[18882d423828fdda]::query::erase::Erased<[u8; 16usize]>>, false, false, false>, rustc_query_impl[2712bf0e30d5291f]::plumbing::QueryCtxt, true>
+  24:        0x10e202484 - rustc_query_impl[2712bf0e30d5291f]::query_impl::resolver_for_lowering_raw::get_query_incr::__rust_end_short_backtrace
+  25:        0x10cb65d98 - rustc_interface[1fe14d92365ecd6b]::passes::create_and_enter_global_ctxt::<core[5272ad47bc580f7e]::option::Option<rustc_interface[1fe14d92365ecd6b]::queries::Linker>, rustc_driver_impl[8d1b5512bf1a4227]::run_compiler::{closure#0}::{closure#2}>
+  26:        0x10cbb1364 - rustc_interface[1fe14d92365ecd6b]::interface::run_compiler::<(), rustc_driver_impl[8d1b5512bf1a4227]::run_compiler::{closure#0}>::{closure#1}
+  27:        0x10cba48ec - std[4d00d41acebae0d6]::sys::backtrace::__rust_begin_short_backtrace::<rustc_interface[1fe14d92365ecd6b]::util::run_in_thread_with_globals<rustc_interface[1fe14d92365ecd6b]::util::run_in_thread_pool_with_globals<rustc_interface[1fe14d92365ecd6b]::interface::run_compiler<(), rustc_driver_impl[8d1b5512bf1a4227]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>
+  28:        0x10cbb7ba4 - <<std[4d00d41acebae0d6]::thread::Builder>::spawn_unchecked_<rustc_interface[1fe14d92365ecd6b]::util::run_in_thread_with_globals<rustc_interface[1fe14d92365ecd6b]::util::run_in_thread_pool_with_globals<rustc_interface[1fe14d92365ecd6b]::interface::run_compiler<(), rustc_driver_impl[8d1b5512bf1a4227]::run_compiler::{closure#0}>::{closure#1}, ()>::{closure#0}, ()>::{closure#0}::{closure#0}, ()>::{closure#1} as core[5272ad47bc580f7e]::ops::function::FnOnce<()>>::call_once::{shim:vtable#0}
+  29:        0x10eb8c3a4 - std::sys::thread::unix::Thread::new::thread_start::ha3addfc73bc30500
+  30:        0x18247bbc8 - __pthread_cond_wait
+
+
+rustc version: 1.92.0-nightly (2300c2aef 2025-10-12)
+platform: aarch64-apple-darwin
+
+query stack during panic:
+#0 [associated_item_def_ids] collecting associated items or fields of `delta_primitives::diff::types::NftMintOperation`
+#1 [resolver_for_lowering_raw] getting the resolver for lowering
+end of query stack
