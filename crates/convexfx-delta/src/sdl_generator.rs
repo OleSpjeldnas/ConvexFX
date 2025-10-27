@@ -1,5 +1,5 @@
 use crate::{DeltaIntegrationError, Result};
-use convexfx_types::{AssetId, Fill, AccountId};
+use convexfx_types::{AssetId, Fill, AccountId, OrderId};
 use delta_base_sdk::{
     vaults::{OwnerId, VaultId, TokenKind, TokenId},
     crypto::HashDigest,
@@ -10,7 +10,7 @@ use delta_crypto::{
     messages::BaseSignedMessage,
 };
 use delta_primitives::{
-    diff::{StateDiff, types::StateDiffOperation},
+    diff::{StateDiff, types::{StateDiffOperation, HoldingsDiff}},
 };
 // Simplified SDL generator for demo purposes
 use serde::{Deserialize, Serialize};
@@ -26,6 +26,8 @@ pub struct SdlGenerator {
     vault_nonces: BTreeMap<VaultId, u64>,
     /// Mapping from AssetId to TokenId for Delta
     asset_to_token: BTreeMap<AssetId, TokenId>,
+    /// Mapping from OrderId to AccountId (for resolving fills to traders)
+    order_to_account: BTreeMap<OrderId, AccountId>,
 }
 
 impl SdlGenerator {
@@ -45,6 +47,7 @@ impl SdlGenerator {
             account_to_owner: BTreeMap::new(),
             vault_nonces: BTreeMap::new(),
             asset_to_token,
+            order_to_account: BTreeMap::new(),
         }
     }
 
@@ -56,6 +59,11 @@ impl SdlGenerator {
     /// Register a vault with initial nonce
     pub fn register_vault(&mut self, vault_id: VaultId, initial_nonce: u64) {
         self.vault_nonces.insert(vault_id, initial_nonce);
+    }
+
+    /// Register an order-to-account mapping (for resolving fills)
+    pub fn register_order(&mut self, order_id: OrderId, account: AccountId) {
+        self.order_to_account.insert(order_id, account);
     }
 
     /// Get the current nonce for a vault
@@ -100,10 +108,16 @@ impl SdlGenerator {
     fn fill_to_state_diffs(&mut self, fill: &Fill) -> Result<Vec<StateDiff>> {
         let mut state_diffs = Vec::new();
 
-        // Get the vault ID for the trader
-        let vault_id = self.get_vault_id(&fill.trader)
+        // Get the account for this order
+        let account = self.order_to_account.get(&fill.order_id)
             .ok_or_else(|| DeltaIntegrationError::InvalidMessage(
-                format!("No vault found for trader: {}", fill.trader)
+                format!("No account found for order: {}", fill.order_id)
+            ))?;
+
+        // Get the vault ID for the trader
+        let vault_id = self.get_vault_id(account)
+            .ok_or_else(|| DeltaIntegrationError::InvalidMessage(
+                format!("No vault found for account: {}", account)
             ))?;
 
         // Get current nonce and increment it
@@ -112,23 +126,23 @@ impl SdlGenerator {
         // Create token diffs for the trade
         let mut token_diffs = BTreeMap::new();
 
-        // Debit the pay asset
+        // Debit the pay asset (negative value)
         let pay_token_id = self.asset_to_token.get(&fill.pay_asset)
             .ok_or_else(|| DeltaIntegrationError::AssetNotFound(
                 format!("Token not found for asset: {:?}", fill.pay_asset)
             ))?;
         let pay_token_kind = TokenKind::Fungible(*pay_token_id);
-        let pay_amount_planck = delta_primitives::type_aliases::Planck::from(fill.pay_units as u64);
-        token_diffs.insert(pay_token_kind, -pay_amount_planck);
+        let pay_amount = -(fill.pay_units as i64);
+        token_diffs.insert(pay_token_kind, HoldingsDiff::Fungible(pay_amount));
 
-        // Credit the receive asset
+        // Credit the receive asset (positive value)
         let recv_token_id = self.asset_to_token.get(&fill.recv_asset)
             .ok_or_else(|| DeltaIntegrationError::AssetNotFound(
                 format!("Token not found for asset: {:?}", fill.recv_asset)
             ))?;
         let recv_token_kind = TokenKind::Fungible(*recv_token_id);
-        let recv_amount_planck = delta_primitives::type_aliases::Planck::from(fill.recv_units as u64);
-        token_diffs.insert(recv_token_kind, recv_amount_planck);
+        let recv_amount = fill.recv_units as i64;
+        token_diffs.insert(recv_token_kind, HoldingsDiff::Fungible(recv_amount));
 
         // Create the state diff
         let state_diff = StateDiff {
@@ -222,6 +236,21 @@ impl SdlBatchProcessor {
         }
     }
 
+    /// Register an account-to-owner mapping
+    pub fn register_account(&mut self, account: AccountId, owner: OwnerId) {
+        self.generator.register_account(account, owner);
+    }
+
+    /// Register a vault with initial nonce
+    pub fn register_vault(&mut self, vault_id: VaultId, initial_nonce: u64) {
+        self.generator.register_vault(vault_id, initial_nonce);
+    }
+
+    /// Register an order-to-account mapping
+    pub fn register_order(&mut self, order_id: OrderId, account: AccountId) {
+        self.generator.register_order(order_id, account);
+    }
+
     /// Process a batch of fills into state diffs
     pub fn process_batch(
         &mut self,
@@ -251,16 +280,6 @@ impl SdlBatchProcessor {
         self.generator.validate_state_diffs(&all_state_diffs)?;
 
         Ok(all_state_diffs)
-    }
-
-    /// Register an account with the generator
-    pub fn register_account(&mut self, account: AccountId, owner: OwnerId) {
-        self.generator.register_account(account, owner);
-    }
-
-    /// Register a vault with the generator
-    pub fn register_vault(&mut self, vault_id: VaultId, initial_nonce: u64) {
-        self.generator.register_vault(vault_id, initial_nonce);
     }
 }
 
@@ -317,10 +336,12 @@ mod tests {
         generator.register_account(account.clone(), owner);
         generator.register_vault(vault_id, 0);
 
+        // Register the order-to-account mapping
+        generator.register_order("test_order".to_string().into(), account);
+        
         // Create a test fill
         let fill = Fill {
             order_id: "test_order".to_string(),
-            trader: account,
             fill_frac: 1.0,
             pay_asset: AssetId::USD,
             recv_asset: AssetId::EUR,
@@ -344,11 +365,11 @@ mod tests {
                 
                 // Check USD debit (negative amount)
                 let usd_token = TokenKind::Fungible(TokenId::new_base(b"USD"));
-                assert_eq!(token_diffs.get(&usd_token), Some(&(-1000 as delta_primitives::type_aliases::Planck)));
+                assert_eq!(token_diffs.get(&usd_token), Some(&HoldingsDiff::Fungible(-1000)));
                 
                 // Check EUR credit (positive amount)
                 let eur_token = TokenKind::Fungible(TokenId::new_base(b"EUR"));
-                assert_eq!(token_diffs.get(&eur_token), Some(&(900 as delta_primitives::type_aliases::Planck)));
+                assert_eq!(token_diffs.get(&eur_token), Some(&HoldingsDiff::Fungible(900)));
             }
             _ => panic!("Expected TokenDiffs operation"),
         }
@@ -361,7 +382,7 @@ mod tests {
 
         // Create a valid state diff
         let mut token_diffs = BTreeMap::new();
-        token_diffs.insert(TokenKind::Fungible(TokenId::new_base(b"USD")), 1000 as delta_primitives::type_aliases::Planck);
+        token_diffs.insert(TokenKind::Fungible(TokenId::new_base(b"USD")), HoldingsDiff::Fungible(1000));
         
         let valid_diff = StateDiff {
             vault_id,
@@ -384,11 +405,14 @@ mod tests {
         processor.register_account(account.clone(), owner);
         processor.register_vault(vault_id, 0);
 
+        // Register order mappings
+        processor.register_order("order1".to_string().into(), account.clone());
+        processor.register_order("order2".to_string().into(), account.clone());
+        
         // Create test fills
         let fills = vec![
             Fill {
                 order_id: "order1".to_string(),
-                trader: account.clone(),
                 fill_frac: 1.0,
                 pay_asset: AssetId::USD,
                 recv_asset: AssetId::EUR,
@@ -398,7 +422,6 @@ mod tests {
             },
             Fill {
                 order_id: "order2".to_string(),
-                trader: account.clone(),
                 fill_frac: 0.5,
                 pay_asset: AssetId::EUR,
                 recv_asset: AssetId::JPY,

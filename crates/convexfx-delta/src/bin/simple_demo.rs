@@ -95,7 +95,7 @@ async fn main() {
             ];
 
             match app.execute_orders(orders) {
-                Ok(fills) => {
+                Ok((fills, _state_diffs)) => {
                     println!("✅ Executed {} fills through ConvexFX clearing", fills.len());
                     for fill in fills {
                         println!("   Order {}: {} {} → {} {} @ {:.4}",
@@ -163,7 +163,7 @@ async fn main() {
             ];
 
             match app.execute_orders(orders) {
-                Ok(fills) => {
+                Ok((fills, _state_diffs)) => {
                     println!("\n✅ Executed {} fills through ConvexFX clearing", fills.len());
                     for fill in fills {
                         println!("   Order {}: {} {} → {} {} @ {:.4}",

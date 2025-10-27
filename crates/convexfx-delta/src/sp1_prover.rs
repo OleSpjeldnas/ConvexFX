@@ -218,7 +218,7 @@ mod tests {
         let mut q_post = BTreeMap::new();
 
         for asset in AssetId::all() {
-            let log_price = if *asset == AssetId::USD { 0.0 } else { 0.1 };
+            let log_price: f64 = if *asset == AssetId::USD { 0.0 } else { 0.1 };
             y_star.insert(*asset, log_price);
             prices.insert(*asset, log_price.exp());
             q_post.insert(*asset, 10000.0);

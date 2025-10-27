@@ -20,11 +20,7 @@ required-features = ["runtime"]
 [[bin]]
 name = "simple_demo"
 path = "src/bin/simple_demo.rs"
-
-[features]
-default = []
-runtime = ["dep:actix-web", "clap"]
-demo = ["clap"]
+required-features = ["demo"]
 
 [[test]]
 name = "integration_test"

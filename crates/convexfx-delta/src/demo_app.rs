@@ -338,9 +338,9 @@ impl DemoApp {
 
         let instance = EpochInstance::new(
             epoch_id,
-            inventory,
+            inventory.clone(),
             orders.clone(),
-            ref_prices,
+            ref_prices.clone(),
             risk_params,
         );
 
@@ -379,6 +379,11 @@ impl DemoApp {
                     }
                 }
             }
+        }
+
+        // Register order-to-account mappings
+        for order in &orders {
+            sdl_generator.register_order(order.id.clone().into(), order.trader.clone());
         }
 
         // Generate state diffs from fills

@@ -274,7 +274,7 @@ mod tests {
         let mut q_post = BTreeMap::new();
 
         for asset in AssetId::all() {
-            let log_price = if *asset == AssetId::USD {
+            let log_price: f64 = if *asset == AssetId::USD {
                 0.0
             } else {
                 0.1 // Some non-zero value
@@ -347,13 +347,12 @@ mod tests {
         let predicate = ScpClearingValidityPredicate::default();
         let mut solution = create_test_solution(true, 1e-6, 1e-7);
         solution.y_star.insert(AssetId::USD, 0.1); // Violate USD = 0
+        solution.prices.insert(AssetId::USD, 0.1_f64.exp()); // Keep price consistent with log_price
 
         let result = predicate.validate_price_consistency(&solution);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("USD numeraire constraint violated"));
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("USD numeraire constraint violated"));
     }
 
     #[test]
@@ -363,7 +362,6 @@ mod tests {
 
         solution.fills.push(Fill {
             order_id: "test1".to_string(),
-            trader: "alice".to_string().into(),
             fill_frac: 0.8,
             pay_asset: AssetId::USD,
             recv_asset: AssetId::EUR,
@@ -382,7 +380,6 @@ mod tests {
 
         solution.fills.push(Fill {
             order_id: "test1".to_string(),
-            trader: "alice".to_string().into(),
             fill_frac: 1.5, // Invalid: > 1.0
             pay_asset: AssetId::USD,
             recv_asset: AssetId::EUR,
@@ -413,7 +410,6 @@ mod tests {
         // Add a fill
         solution.fills.push(Fill {
             order_id: "test1".to_string(),
-            trader: "alice".to_string().into(),
             fill_frac: 1.0,
             pay_asset: AssetId::USD,
             recv_asset: AssetId::EUR,
