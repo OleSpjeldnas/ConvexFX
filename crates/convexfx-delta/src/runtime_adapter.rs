@@ -1,9 +1,8 @@
-use crate::{DeltaIntegrationError, Result, VerifiableType, VerifiableWithDiffs};
+use crate::{DeltaIntegrationError, Result};
 use convexfx_exchange::{Exchange, ExchangeConfig};
 use convexfx_types::{AccountId, Amount, AssetId, Fill, PairOrder};
 use delta_base_sdk::{
-    vaults::{OwnerId as DeltaOwnerId},
-    crypto::{ed25519::{PrivKey}},
+    vaults::{OwnerId},
 };
 use serde_json;
 use std::{collections::BTreeMap, num::NonZero};
@@ -29,7 +28,7 @@ impl ConvexFxDeltaAdapter {
     }
 
     /// Register a Delta owner with a ConvexFX account
-    pub fn register_owner(&mut self, owner: DeltaOwnerId, account: AccountId) {
+    pub fn register_owner(&mut self, owner: OwnerId, account: AccountId) {
         self.state_manager.register_owner(owner, account.clone());
         self.sdl_generator.register_account(account, owner);
     }
@@ -37,8 +36,8 @@ impl ConvexFxDeltaAdapter {
     /// Process Delta verifiable messages through ConvexFX execution
     pub async fn process_messages(
         &mut self,
-        _messages: Vec<VerifiableType>,
-    ) -> Result<Vec<VerifiableWithDiffs>> {
+        _messages: Vec<delta_verifiable::types::VerifiableType>,
+    ) -> Result<Vec<delta_verifiable::types::VerifiableWithDiffs>> {
         // For this simplified example, we'll create some mock orders
         // In a real implementation, this would convert Delta messages to ConvexFX orders
         let mut orders = Vec::new();
@@ -209,8 +208,8 @@ impl ConvexFxExecutionEngine {
     /// Execute messages using ConvexFX (simplified implementation)
     pub async fn execute_messages(
         &mut self,
-        messages: Vec<crate::VerifiableType>,
-    ) -> Result<Vec<crate::VerifiableWithDiffs>> {
+        messages: Vec<delta_verifiable::types::VerifiableType>,
+    ) -> Result<Vec<delta_verifiable::types::VerifiableWithDiffs>> {
         // For this simplified example, we'll create a new exchange
         // In a real implementation, this would be handled more efficiently
         let exchange = Exchange::new(ExchangeConfig::default())?;

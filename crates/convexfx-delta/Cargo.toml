@@ -3,6 +3,29 @@ name = "convexfx-delta"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "convexfx-delta"
+path = "src/bin/convexfx-delta.rs"
+
+[[bin]]
+name = "demo"
+path = "src/bin/demo.rs"
+required-features = ["demo"]
+
+[[bin]]
+name = "web_app"
+path = "src/bin/web_app.rs"
+required-features = ["runtime"]
+
+[[bin]]
+name = "simple_demo"
+path = "src/bin/simple_demo.rs"
+
+[features]
+default = []
+runtime = ["dep:actix-web", "clap"]
+demo = ["clap"]
+
 [[test]]
 name = "integration_test"
 path = "tests/integration_test.rs"
@@ -13,8 +36,23 @@ convexfx-exchange = { path = "../convexfx-exchange" }
 convexfx-clearing = { path = "../convexfx-clearing" }
 convexfx-risk = { path = "../convexfx-risk" }
 convexfx-oracle = { path = "../convexfx-oracle" }
-delta_base_sdk = { version = "=0.5.5", registry = "delta" }
+delta_base_sdk = { version = "=0.5.10", registry = "delta" }
+delta_executor_sdk = { version = "=0.5.10", registry = "delta" }
+delta_verifiable = { version = "=0.5.10", registry = "delta" }
+delta_primitives = { version = "=0.5.10", registry = "delta" }
+delta_crypto = { version = "=0.5.10", registry = "delta" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.0", features = ["full"] }
+snafu = "0.8"
+tokio = { version = "1.0", features = ["full", "fs"] }
+actix-web = { version = "4.0", optional = true }
+clap = { version = "4.0", features = ["derive"], optional = true }
+hex = "0.4"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+shellexpand = "3.1"
+env_logger = "0.11"
+
+[dev-dependencies]
+tempfile = "3.0"

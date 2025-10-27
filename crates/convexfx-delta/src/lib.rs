@@ -7,55 +7,22 @@ use delta_base_sdk::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-// Simplified verifiable types for demo (since they don't exist in this SDK version)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifiableType {
-    pub swap_message: Option<SwapMessage>,
-}
+// Re-export Delta SDK types for compatibility
+pub use delta_verifiable::types::{VerifiableType, VerifiableWithDiffs};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SwapMessage {
-    pub owner: OwnerId,
-    pub pay_asset: String,
-    pub receive_asset: String,
-    pub budget: String,
-    pub limit_ratio: Option<f64>,
-    pub min_fill_fraction: Option<f64>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VerifiableWithDiffs {
-    pub verifiable: VerifiableType,
-    pub state_diffs: Vec<StateDiff>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StateDiff {
-    pub transitions: Vec<StateTransition>,
-    pub metadata: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct StateTransition {
-    pub vault_id: VaultId,
-    pub asset_id: String,
-    pub amount: i64,
-    pub nonce: u64,
-}
-
-/// Delta-compatible message types that bridge between Delta and ConvexFX
-pub mod messages;
 /// Delta state management and vault operations
 pub mod state;
-/// Delta runtime adapter that uses ConvexFX as execution engine
-pub mod runtime_adapter;
 /// SDL (State Diff List) generation from ConvexFX results
 pub mod sdl_generator;
+/// Full Delta executor implementation using ConvexFX
+pub mod executor;
+/// Demo application for local vault management and signed message processing
+pub mod demo_app;
 
-pub use messages::*;
 pub use state::*;
-pub use runtime_adapter::*;
 pub use sdl_generator::*;
+pub use executor::*;
+pub use demo_app::*;
 
 /// Error types for Delta integration
 #[derive(Debug, thiserror::Error)]
@@ -80,6 +47,12 @@ pub enum DeltaIntegrationError {
 
     #[error("Exchange error: {0}")]
     Exchange(#[from] convexfx_exchange::ExchangeError),
+
+    #[error("Signature error: {0}")]
+    Signature(String),
+    
+    #[error("Clearing failed: {0}")]
+    ClearingFailed(String),
 }
 
 /// Result type for Delta integration operations

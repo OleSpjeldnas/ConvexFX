@@ -1,0 +1,43 @@
+# ConvexFX Delta Executor Configuration
+#
+# Copy this file to executor.yaml and configure for your environment
+
+# Shard identifier - must match your domain agreement
+shard: 0
+
+# Base layer RPC endpoint
+base_layer_rpc: "http://localhost:9944"
+
+# Executor keypair (for signing domain agreements and SDLs)
+# This should be a path to a keypair file or generated
+keypair_path: "~/.convexfx/executor_key.json"
+
+# Storage configuration
+storage:
+  type: "in_memory"  # or "rocksdb"
+  # path: "~/.convexfx/executor_db"  # for rocksdb
+
+# Proving configuration
+proving:
+  type: "mock"  # or "zkp" for production
+
+# ConvexFX-specific configuration
+convexfx:
+  # Default liquidity for the exchange
+  initial_liquidity:
+    USD: 1000000.0
+    EUR: 1000000.0
+    JPY: 100000000.0
+    GBP: 1000000.0
+    CHF: 1000000.0
+    AUD: 1000000.0
+
+  # Risk parameters
+  risk:
+    max_inventory_deviation: 0.1
+    risk_aversion: 0.01
+
+  # Clearing parameters
+  clearing:
+    batch_size: 100
+    epoch_duration_ms: 1000
