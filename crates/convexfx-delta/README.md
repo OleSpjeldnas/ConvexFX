@@ -2,16 +2,6 @@
 
 A full Delta network executor that uses the ConvexFX SCP clearing engine for decentralized exchange operations.
 
-## 🎯 **IMPLEMENTATION STATUS**
-
-**✅ COMPLETE**: The core challenge of SDL generation from ConvexFX fills has been **fully solved**. The executor can now:
-- Convert ConvexFX clearing results to proper Delta `StateDiff` objects
-- Manage vault lifecycles with automatic nonce tracking
-- Handle multi-user trading scenarios with cryptographic keypairs
-- Generate production-ready state diffs for Delta base layer submission
-
-**🔄 NEXT STEPS**: Connect to Delta base layer RPC and replace mock proving with ZKP client.
-
 ## Overview
 
 This executor integrates ConvexFX's advanced clearing algorithm with the Delta network, providing:
@@ -250,7 +240,7 @@ Verifies that the exchange's inventory changes correctly match all fills (double
 
 **Validation Logic:**
 ```rust
-const INVENTORY_TOLERANCE: f64 = 1e-4;  // Relaxed for numerical stability
+const INVENTORY_TOLERANCE: f64 = 1e-4;  
 
 for (asset, initial_amount) in &context.initial_inventory {
     // Calculate net flow from all fills
@@ -345,8 +335,8 @@ The predicates use carefully chosen tolerances based on numerical analysis:
 | Parameter | Value | Rationale |
 |-----------|-------|-----------|
 | `MIN_FILL_AMOUNT` | `1e-8` | 8 orders of magnitude below basis point precision; handles QP solver rounding |
-| `tolerance_y` | `1e-4` | Matches SCP convergence tolerance for log-prices (relaxed for stability) |
-| `tolerance_alpha` | `1e-5` | Matches SCP convergence tolerance for fill fractions (relaxed for stability) |
+| `tolerance_y` | `1e-4` | Matches SCP convergence tolerance for log-prices  |
+| `tolerance_alpha` | `1e-5` | Matches SCP convergence tolerance for fill fractions |
 | `inventory_tolerance` | `1e-4` | Accumulates across many fills; sufficient to catch real bugs while allowing rounding |
 | `max_price_deviation` | `1%` | Tight enough to catch errors, loose enough for exponential function precision |
 
@@ -481,22 +471,6 @@ let proof = sp1_prover.prove_clearing(&solution, &initial_inventory)?;
 // 4. Submit to Delta with proof
 runtime.submit_sdl(state_diffs, proof).await?;
 ```
-
-#### Why SP1?
-
-1. **Write in Rust**: No need to learn circuit languages - just write normal Rust
-2. **Automatic Proving**: SP1 handles all ZKP complexity automatically
-3. **Trustless Enforcement**: Base layer cryptographically verifies rule compliance
-4. **Flexible**: Easy to add new predicates by updating the SP1 program
-
-#### Key Benefits
-
-- ✅ **Cryptographic Enforcement**: Local laws are verifiably enforced on-chain
-- ✅ **No Trust Required**: Base layer can verify without trusting the executor
-- ✅ **Composable**: Other protocols can trust ConvexFX clearing results
-- ✅ **Upgradeable**: New local laws can be deployed by updating vkey
-- ✅ **Performance**: SP1 generates proofs efficiently for production use
-
 ### Current Status
 
 ✅ **CORE IMPLEMENTATION COMPLETE (95%)**
