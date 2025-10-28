@@ -243,7 +243,7 @@ impl DemoApp {
     /// Create a new demo application
     pub fn new() -> Result<Self> {
         let exchange = Exchange::new(ExchangeConfig::default())?;
-        let clearing_engine = ScpClearing::with_simple_solver();
+        let clearing_engine = ScpClearing::new();  // Use production solver (OSQP/Clarabel) instead of simple solver
         let sdl_generator = crate::sdl_generator::SdlGenerator::new();
 
         let app = Self {

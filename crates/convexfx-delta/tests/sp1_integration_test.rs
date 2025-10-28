@@ -61,7 +61,7 @@ fn test_sp1_vkey_deterministic() {
 
 #[tokio::test]
 async fn test_sp1_proof_generation_valid_clearing() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -103,7 +103,7 @@ async fn test_sp1_proof_generation_valid_clearing() {
 
 #[tokio::test]
 async fn test_sp1_proof_reject_non_convergent() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -138,7 +138,7 @@ async fn test_sp1_proof_reject_non_convergent() {
 
 #[tokio::test]
 async fn test_sp1_proof_reject_high_step_norm() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -202,7 +202,7 @@ async fn test_sp1_with_demo_app() {
 
 #[tokio::test]
 async fn test_sp1_proof_empty_batch() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -223,7 +223,7 @@ async fn test_sp1_proof_empty_batch() {
 
 #[tokio::test]
 async fn test_sp1_proof_large_batch() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -257,7 +257,7 @@ async fn test_sp1_proof_large_batch() {
 
 #[tokio::test]
 async fn test_sp1_proof_multi_asset() {
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -337,7 +337,7 @@ fn test_clearing_proof_input_serialization() {
 #[tokio::test]
 async fn test_sp1_proof_determinism() {
     // Same input should produce same proof (with deterministic prover)
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();

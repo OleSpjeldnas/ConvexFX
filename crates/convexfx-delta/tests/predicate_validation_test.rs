@@ -67,7 +67,7 @@ fn create_initial_inventory() -> BTreeMap<AssetId, f64> {
 #[tokio::test]
 async fn test_predicate_valid_clearing() {
     // Create a valid clearing scenario
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();  // Use production solver
     let orders = create_test_orders();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -124,7 +124,7 @@ async fn test_predicate_with_demo_app() {
 #[tokio::test]
 async fn test_predicate_empty_order_batch() {
     // Test with no orders - should still be valid
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let orders = Vec::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -153,7 +153,7 @@ async fn test_predicate_empty_order_batch() {
 #[tokio::test]
 async fn test_predicate_large_order_batch() {
     // Test with many orders to stress-test validation
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -200,7 +200,7 @@ async fn test_predicate_large_order_batch() {
 #[tokio::test]
 async fn test_predicate_multi_asset_trading() {
     // Test with orders across multiple asset pairs
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();
@@ -265,7 +265,7 @@ async fn test_predicate_multi_asset_trading() {
 #[tokio::test]
 async fn test_predicate_convergence_check() {
     // This test verifies that the predicate checks convergence properly
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let orders = create_test_orders();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -299,7 +299,7 @@ async fn test_predicate_convergence_check() {
 #[tokio::test]
 async fn test_predicate_price_consistency() {
     // Test that prices are consistent between log and linear space
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let orders = create_test_orders();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -340,7 +340,7 @@ async fn test_predicate_price_consistency() {
 #[tokio::test]
 async fn test_predicate_inventory_conservation() {
     // Test that inventory is properly conserved
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let orders = create_test_orders();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -385,7 +385,7 @@ async fn test_predicate_inventory_conservation() {
 #[tokio::test]
 async fn test_predicate_objective_components() {
     // Test that objective function components are valid
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let orders = create_test_orders();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
@@ -422,7 +422,7 @@ async fn test_predicate_objective_components() {
 #[tokio::test]
 async fn test_predicate_with_partial_fills() {
     // Test validation when orders are partially filled
-    let clearing_engine = ScpClearing::with_simple_solver();
+    let clearing_engine = ScpClearing::new();
     let ref_prices = create_ref_prices();
     let inventory = create_initial_inventory();
     let risk_params = RiskParams::default_demo();

@@ -82,7 +82,7 @@ impl ConvexFxExecutor {
                 message: format!("{:?}", e) 
             })?;
         
-        let clearing_engine = ScpClearing::with_simple_solver();
+        let clearing_engine = ScpClearing::new();  // Use production solver (OSQP/Clarabel) instead of simple solver
         let risk_params = RiskParams::default_demo();
         
         Ok(Self {

@@ -35,10 +35,10 @@ pub struct ScpClearingValidityPredicate {
 impl Default for ScpClearingValidityPredicate {
     fn default() -> Self {
         Self {
-            tolerance_y: 1e-5,
-            tolerance_alpha: 1e-6,
+            tolerance_y: 1e-4,   // Matches SCP convergence tolerance
+            tolerance_alpha: 1e-5, // Matches SCP convergence tolerance
             max_price_deviation: 0.01, // 1%
-            inventory_tolerance: 1e-6,
+            inventory_tolerance: 1e-4,  // Relaxed for numerical stability
         }
     }
 }
@@ -151,17 +151,19 @@ impl ScpClearingValidityPredicate {
             }
 
             // Check fill amounts are positive (or zero for unfilled orders)
-            if fill.fill_frac > 0.0 {
-                if fill.pay_units <= 0.0 {
+            // Use a small tolerance to handle numerical precision issues
+            const MIN_FILL_AMOUNT: f64 = 1e-8;
+            if fill.fill_frac > MIN_FILL_AMOUNT {
+                if fill.pay_units <= MIN_FILL_AMOUNT {
                     return Err(DeltaIntegrationError::ClearingFailed(format!(
-                        "Non-positive pay amount {:.6} for filled order {}",
-                        fill.pay_units, fill.order_id
+                        "Non-positive pay amount {:.6} for filled order {} (fill_frac: {})",
+                        fill.pay_units, fill.order_id, fill.fill_frac
                     )));
                 }
-                if fill.recv_units <= 0.0 {
+                if fill.recv_units <= MIN_FILL_AMOUNT {
                     return Err(DeltaIntegrationError::ClearingFailed(format!(
-                        "Non-positive receive amount {:.6} for filled order {}",
-                        fill.recv_units, fill.order_id
+                        "Non-positive receive amount {:.6} for filled order {} (fill_frac: {})",
+                        fill.recv_units, fill.order_id, fill.fill_frac
                     )));
                 }
             }

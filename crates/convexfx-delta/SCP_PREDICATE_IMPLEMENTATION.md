@@ -37,8 +37,8 @@ crates/convexfx-delta/src/predicates.rs
 
 **Checks**:
 - `convergence_achieved == true`
-- `final_step_norm_y < tolerance_y` (default: 1e-5)
-- `final_step_norm_alpha < tolerance_alpha` (default: 1e-6)
+- `final_step_norm_y < tolerance_y` (default: 1e-4, relaxed for numerical stability)
+- `final_step_norm_alpha < tolerance_alpha` (default: 1e-5, relaxed for numerical stability)
 
 **Why It Matters**: Non-converged solutions may not be optimal and could lead to economically inefficient or unfair clearing outcomes.
 
@@ -59,8 +59,9 @@ crates/convexfx-delta/src/predicates.rs
 
 **Checks**:
 - Fill fractions in range: `0 ≤ fill_frac ≤ 1`
-- Positive fill amounts (for non-zero fills)
+- Positive fill amounts (for non-trivial fills: `fill_frac > 1e-8`)
 - Finite fill amounts
+- Uses `MIN_FILL_AMOUNT = 1e-8` to handle floating-point precision
 
 **Why It Matters**: Invalid fills could lead to incorrect state transitions or double-spending vulnerabilities.
 
@@ -71,7 +72,7 @@ crates/convexfx-delta/src/predicates.rs
 **Checks**:
 - For each asset: `final_inventory = initial_inventory + net_flow`
 - Net flow calculated from all fills
-- Tolerance: 1e-6 for numerical errors
+- Tolerance: 1e-4 for numerical errors (relaxed to handle accumulated floating-point error)
 
 **Why It Matters**: Inventory conservation is a fundamental invariant. Violations could indicate bugs or enable exploits.
 

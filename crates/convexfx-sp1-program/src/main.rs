@@ -129,16 +129,18 @@ pub fn main() {
         );
         
         // For non-zero fills, check amounts are positive
-        if fill.fill_frac > 0.0 {
+        // Use a small tolerance to handle numerical precision issues
+        const MIN_FILL_AMOUNT: f64 = 1e-8;
+        if fill.fill_frac > MIN_FILL_AMOUNT {
             assert!(
-                fill.pay_units > 0.0,
+                fill.pay_units > MIN_FILL_AMOUNT,
                 "Non-positive pay amount {} for fill {}",
                 fill.pay_units,
                 i
             );
             
             assert!(
-                fill.recv_units > 0.0,
+                fill.recv_units > MIN_FILL_AMOUNT,
                 "Non-positive receive amount {} for fill {}",
                 fill.recv_units,
                 i

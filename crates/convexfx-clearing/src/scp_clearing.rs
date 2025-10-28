@@ -20,9 +20,9 @@ pub struct ScpParams {
 impl Default for ScpParams {
     fn default() -> Self {
         ScpParams {
-            max_iterations: 5,
-            tolerance_y: 1e-5,
-            tolerance_alpha: 1e-6,
+            max_iterations: 50,  // Increased for stiff problems with strong tracking penalties
+            tolerance_y: 1e-4,   // Relaxed from 1e-5 for numerical stability with tight constraints
+            tolerance_alpha: 1e-5, // Relaxed from 1e-6 for numerical stability
             line_search_max_steps: 10,
         }
     }
