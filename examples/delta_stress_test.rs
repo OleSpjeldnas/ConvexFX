@@ -185,7 +185,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     println!("⚡ Step 6: Process Swaps Through ConvexFX");
     let mut orders = Vec::new();
     
-    for (user_id, pair, _budget, msg) in swap_messages {
+    for (user_id, pair, _budget, msg) in &swap_messages {
         let order_id = format!("order_u{}_{}", user_id, pair.replace("->", "_to_"));
         let order = msg.to_pair_order(order_id)?;
         orders.push(order);
@@ -252,23 +252,40 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     
     for (owner, account) in &users {
         sdl_generator.register_account(account.clone(), owner.clone());
+        
+        // Register vault with initial nonce
+        use delta_base_sdk::vaults::VaultId;
+        let vault_id = VaultId::from((*owner, 0));
+        sdl_generator.register_vault(vault_id, 0);
     }
     
-    let verifiable_diffs = sdl_generator.generate_sdl_from_fills(fills.clone(), 1)?;
+    // Register order-to-account mappings
+    for (user_id, pair, _budget, _msg) in &swap_messages {
+        let order_id = format!("order_u{}_{}", user_id, pair.replace("->", "_to_"));
+        sdl_generator.register_order(order_id.into(), users[*user_id].1.clone());
+    }
+    
+    let state_diffs = sdl_generator.generate_sdl_from_fills(fills.clone(), 1)?;
     
     println!("✅ SDL generated:");
-    println!("   State diffs: {}", verifiable_diffs.state_diffs.len());
+    println!("   State diffs: {}", state_diffs.len());
     
-    let mut total_transitions = 0;
-    for diff in &verifiable_diffs.state_diffs {
-        total_transitions += diff.transitions.len();
+    let mut total_token_changes = 0;
+    for diff in &state_diffs {
+        use convexfx_delta::StateDiffOperation;
+        match &diff.operation {
+            StateDiffOperation::TokenDiffs(token_diffs) => {
+                total_token_changes += token_diffs.len();
+            }
+            _ => {}
+        }
     }
-    println!("   Total transitions: {}", total_transitions);
+    println!("   Total token changes: {}", total_token_changes);
     println!();
 
     // Step 9: Validate SDL
     println!("✅ Step 9: Validate SDL");
-    sdl_generator.validate_sdl(&verifiable_diffs)?;
+    sdl_generator.validate_state_diffs(&state_diffs)?;
     println!("✅ SDL validation passed\n");
 
     // Step 10: Final Summary
@@ -278,7 +295,7 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Provided liquidity across USD, EUR, JPY");
     println!("✅ Submitted {} swap messages", fills.len());
     println!("✅ Executed {} fills", fills.len());
-    println!("✅ Generated SDL with {} state diffs", verifiable_diffs.state_diffs.len());
+    println!("✅ Generated SDL with {} state diffs", state_diffs.len());
     println!("✅ Validated SDL structure");
     println!();
     println!("🚀 ConvexFX + Delta Network integration fully operational!");

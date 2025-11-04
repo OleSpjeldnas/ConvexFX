@@ -4,27 +4,17 @@
 //! allowing ConvexFX to run as a full Delta executor with proving, SDL
 //! submission, and domain agreement management.
 
-use crate::DeltaIntegrationError;
 use convexfx_clearing::{EpochInstance, ScpClearing};
 use convexfx_exchange::{Exchange, ExchangeConfig};
 use convexfx_oracle::RefPrices;
 use convexfx_risk::RiskParams;
-use convexfx_types::{AccountId, Amount, AssetId, PairOrder};
-use delta_base_sdk::vaults::TokenKind;
-use delta_crypto::{
-    ed25519,
-    messages::SignedMessage,
-    signing_key::SigningKey,
-};
+use convexfx_types::{AssetId, PairOrder};
 use delta_executor_sdk::execution::Execution;
-use delta_primitives::diff::types;
 use delta_verifiable::types::{
-    debit_allowance::{AllowanceAmount, DebitAllowance, SignedDebitAllowance},
-    fungible::{Operation as VerifiableFungibleOperation, SignedMint},
-    nft::{Operation as VerifiableNftOperation, SignedMint as SignedNftMint},
-    VerifiableWithDiffs,
+    debit_allowance::SignedDebitAllowance,
+    fungible::SignedMint,
+    nft::SignedMint as SignedNftMint,
 };
-use serde_json::json;
 use snafu::Snafu;
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
@@ -185,7 +175,7 @@ impl ConvexFxExecutor {
     /// Process a DebitAllowance message for order settlement
     fn process_debit_allowance_for_settlement(
         &self,
-        signed_debit: &SignedDebitAllowance,
+        _signed_debit: &SignedDebitAllowance,
     ) -> std::result::Result<Vec<delta_primitives::diff::StateDiff>, ConvexFxExecutorError> {
         tracing::info!("Processing debit allowance for settlement");
 
@@ -197,7 +187,7 @@ impl ConvexFxExecutor {
     /// Process a FungibleTokenMint message for rewards/liquidity
     fn process_fungible_token_mint_for_rewards(
         &self,
-        signed_mint: &SignedMint,
+        _signed_mint: &SignedMint,
     ) -> std::result::Result<Vec<delta_primitives::diff::StateDiff>, ConvexFxExecutorError> {
         tracing::info!("Processing fungible token mint for rewards");
 
@@ -209,7 +199,7 @@ impl ConvexFxExecutor {
     /// Process an NftMint message for position tokens
     fn process_nft_mint_for_positions(
         &self,
-        signed_nft_mint: &SignedNftMint,
+        _signed_nft_mint: &SignedNftMint,
     ) -> std::result::Result<Vec<delta_primitives::diff::StateDiff>, ConvexFxExecutorError> {
         tracing::info!("Processing NFT mint for positions");
 
@@ -250,7 +240,7 @@ impl Execution for ConvexFxExecutor {
 
                     // DebitAllowance transfers tokens from debited vault to credited vault
                     // In a DEX context, this is used for order settlement
-                    let state_diffs = self.process_debit_allowance_for_settlement(signed_debit)?;
+                    let _state_diffs = self.process_debit_allowance_for_settlement(signed_debit)?;
 
                     results.push(delta_verifiable::types::VerifiableWithDiffs {
                         verifiable: verifiable.clone(),
@@ -263,7 +253,7 @@ impl Execution for ConvexFxExecutor {
 
                     // FungibleTokenMint creates or increases token supply
                     // In a DEX context, this could be for liquidity rewards
-                    let state_diffs = self.process_fungible_token_mint_for_rewards(&signed_mint)?;
+                    let _state_diffs = self.process_fungible_token_mint_for_rewards(&signed_mint)?;
 
                     results.push(delta_verifiable::types::VerifiableWithDiffs {
                         verifiable: verifiable.clone(),
@@ -275,7 +265,7 @@ impl Execution for ConvexFxExecutor {
                     tracing::info!("Processing NftMint message {}", i);
 
                     // NFT minting for position tokens, governance, etc.
-                    let state_diffs = self.process_nft_mint_for_positions(&signed_nft_mint)?;
+                    let _state_diffs = self.process_nft_mint_for_positions(&signed_nft_mint)?;
 
                     results.push(delta_verifiable::types::VerifiableWithDiffs {
                         verifiable: verifiable.clone(),

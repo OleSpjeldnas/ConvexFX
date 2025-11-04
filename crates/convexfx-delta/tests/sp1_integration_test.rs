@@ -3,7 +3,7 @@
 //! This test suite validates the SP1 zkVM integration, including proof generation,
 //! verification key extraction, and end-to-end proving flow.
 
-use convexfx_clearing::{Diagnostics, EpochInstance, ObjectiveTerms, ScpClearing};
+use convexfx_clearing::{EpochInstance, ScpClearing};
 use convexfx_delta::sp1_prover::{ConvexFxSp1Prover, ClearingProofInput};
 use convexfx_delta::DemoApp;
 use convexfx_oracle::RefPrices;

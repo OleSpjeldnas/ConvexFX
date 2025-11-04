@@ -1,4 +1,4 @@
-use crate::{DeltaIntegrationError, Result};
+use crate::Result;
 use convexfx_types::{AccountId, Amount, AssetId};
 use delta_base_sdk::{
     vaults::{OwnerId, VaultId, Vault},
@@ -55,7 +55,7 @@ impl DeltaStateManager {
     }
 
     /// Get asset balance from a Delta vault
-    fn get_asset_balance(&self, vault: &Vault, asset: AssetId) -> Amount {
+    fn get_asset_balance(&self, _vault: &Vault, asset: AssetId) -> Amount {
         // Simplified balance extraction - in reality this would parse vault data properly
         // For now, assume all vaults have some balance in supported assets
         match asset {
@@ -111,7 +111,7 @@ impl DeltaStateManager {
     pub async fn get_vault_balances(
         &self,
         _runtime: &delta_base_sdk::rpc::BaseRpcClient, // Simplified for demo
-        owner: &OwnerId,
+        _owner: &OwnerId,
     ) -> Result<BTreeMap<AssetId, Amount>> {
         // For this demo, we'll return mock balances
         // In a real implementation, this would query the actual vault

@@ -1,14 +1,8 @@
-use convexfx_types::{AccountId, AssetId, Amount, PairOrder};
 use convexfx_exchange;
-use delta_base_sdk::{
-    vaults::{OwnerId, VaultId},
-    crypto::{HashDigest},
-};
-use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 // Re-export Delta SDK types for compatibility
 pub use delta_verifiable::types::{VerifiableType, VerifiableWithDiffs};
+pub use delta_primitives::diff::{StateDiff, types::{StateDiffOperation, HoldingsDiff}};
 
 /// Delta state management and vault operations
 pub mod state;
@@ -22,12 +16,18 @@ pub mod demo_app;
 pub mod predicates;
 /// SP1 prover for ConvexFX local laws
 pub mod sp1_prover;
+/// Delta runtime adapter for ConvexFX integration
+pub mod runtime_adapter;
+/// Message types for Delta integration
+pub mod messages;
 
 pub use state::*;
 pub use sdl_generator::*;
 pub use executor::*;
 pub use demo_app::*;
 pub use predicates::*;
+pub use runtime_adapter::*;
+pub use messages::*;
 
 /// Error types for Delta integration
 #[derive(Debug, thiserror::Error)]

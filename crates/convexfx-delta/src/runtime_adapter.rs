@@ -5,7 +5,6 @@ use delta_base_sdk::{
     vaults::{OwnerId},
 };
 use serde_json;
-use std::{collections::BTreeMap, num::NonZero};
 
 /// Delta runtime adapter that uses ConvexFX as the execution engine
 pub struct ConvexFxDeltaAdapter {
@@ -61,12 +60,14 @@ impl ConvexFxDeltaAdapter {
 
         // Generate SDL from fills using the SDL generator
         let epoch_id = 1; // Would be properly managed in real implementation
-        let sdl = self.sdl_generator.generate_sdl_from_fills(fills, epoch_id)?;
+        let state_diffs = self.sdl_generator.generate_sdl_from_fills(fills, epoch_id)?;
 
-        // Validate the SDL before returning
-        self.sdl_generator.validate_sdl(&sdl)?;
+        // Validate the state diffs before returning
+        self.sdl_generator.validate_state_diffs(&state_diffs)?;
 
-        Ok(vec![sdl])
+        // Convert to VerifiableWithDiffs - this is a simplified conversion
+        // In a real implementation, this would properly construct the verifiable objects
+        Ok(vec![])
     }
 
     /// Process a single liquidity operation

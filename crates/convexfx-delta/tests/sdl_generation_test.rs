@@ -8,11 +8,8 @@
 
 use convexfx_delta::DemoApp;
 use convexfx_types::{AssetId, Amount, PairOrder};
-use delta_base_sdk::vaults::{TokenKind, TokenId};
-use delta_primitives::{
-    diff::{StateDiff, types::StateDiffOperation},
-};
-use std::collections::BTreeMap;
+use delta_base_sdk::vaults::TokenKind;
+use delta_primitives::diff::types::StateDiffOperation;
 
 #[tokio::test]
 async fn test_complete_sdl_generation_flow() {

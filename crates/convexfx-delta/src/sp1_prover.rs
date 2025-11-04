@@ -210,7 +210,7 @@ impl Default for ConvexFxSp1Prover {
 mod tests {
     use super::*;
     use convexfx_clearing::{Diagnostics, ObjectiveTerms};
-    use convexfx_types::Fill;
+    
 
     fn create_test_solution() -> EpochSolution {
         let mut y_star = BTreeMap::new();

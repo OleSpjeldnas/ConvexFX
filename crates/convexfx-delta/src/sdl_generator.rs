@@ -4,18 +4,11 @@ use delta_base_sdk::{
     vaults::{OwnerId, VaultId, TokenKind, TokenId},
     crypto::HashDigest,
 };
-use delta_crypto::{
-    signature::Signature,
-    ed25519::{PubKey, SignatureScheme},
-    messages::BaseSignedMessage,
-};
 use delta_primitives::{
     diff::{StateDiff, types::{StateDiffOperation, HoldingsDiff}},
 };
 // Simplified SDL generator for demo purposes
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 
 /// SDL Generator that converts ConvexFX clearing results to Delta SDL format
 #[derive(Debug)]
@@ -90,7 +83,7 @@ impl SdlGenerator {
     pub fn generate_sdl_from_fills(
         &mut self,
         fills: Vec<Fill>,
-        epoch_id: u64,
+        _epoch_id: u64,
     ) -> Result<Vec<StateDiff>> {
         let mut state_diffs = Vec::new();
 
@@ -286,8 +279,8 @@ impl SdlBatchProcessor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use convexfx_types::{AccountId, Amount};
-    use delta_base_sdk::{vaults::{OwnerId as DeltaOwnerId}, crypto::ed25519::PubKey, crypto::Hash256};
+    use convexfx_types::AccountId;
+    use delta_base_sdk::{crypto::ed25519::PubKey, crypto::Hash256};
 
     #[test]
     fn test_sdl_generator_creation() {

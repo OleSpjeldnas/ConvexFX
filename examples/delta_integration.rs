@@ -110,25 +110,48 @@ async fn async_main() -> Result<(), Box<dyn std::error::Error>> {
     // Step 7: Generate SDL from Results
     println!("\n📋 Step 7: Generate SDL from Results");
     let mut sdl_generator = SdlGenerator::new();
-    sdl_generator.register_account(alice_account, alice_owner);
-    sdl_generator.register_account(bob_account, bob_owner);
+    sdl_generator.register_account(alice_account.clone(), alice_owner);
+    sdl_generator.register_account(bob_account.clone(), bob_owner);
+    
+    // Register order-to-account mappings
+    sdl_generator.register_order("alice_order_1".to_string().into(), alice_account.clone());
+    sdl_generator.register_order("bob_order_2".to_string().into(), bob_account.clone());
+    
+    // Register vaults with initial nonce
+    use delta_base_sdk::vaults::VaultId;
+    let alice_vault = VaultId::from((alice_owner, 0));
+    let bob_vault = VaultId::from((bob_owner, 0));
+    sdl_generator.register_vault(alice_vault, 0);
+    sdl_generator.register_vault(bob_vault, 0);
 
-    let verifiable_diffs = sdl_generator.generate_sdl_from_fills(fills, 1)?;
+    let state_diffs = sdl_generator.generate_sdl_from_fills(fills, 1)?;
 
-    println!("✅ SDL generated with {} state diffs", verifiable_diffs.state_diffs.len());
-    for (i, diff) in verifiable_diffs.state_diffs.iter().enumerate() {
-        println!("   - Diff {}: {} transitions", i, diff.transitions.len());
-        for transition in &diff.transitions {
-            println!("     * Vault {:?}: {} {}",
-                     transition.vault_id,
-                     if transition.amount > 0 { "+" } else { "" },
-                     transition.amount);
+    println!("✅ SDL generated with {} state diffs", state_diffs.len());
+    for (i, diff) in state_diffs.iter().enumerate() {
+        use convexfx_delta::{StateDiffOperation, HoldingsDiff};
+        println!("   - Diff {}: Vault {:?}, nonce {:?}", i, diff.vault_id, diff.new_nonce);
+        match &diff.operation {
+            StateDiffOperation::TokenDiffs(token_diffs) => {
+                println!("     * {} token changes", token_diffs.len());
+                for (token_kind, holdings_diff) in token_diffs {
+                    match holdings_diff {
+                        HoldingsDiff::Fungible(amount) => {
+                            println!("       - Token {:?}: {} {}",
+                                     token_kind,
+                                     if *amount > 0 { "+" } else { "" },
+                                     amount);
+                        }
+                        _ => println!("       - Token {:?}: (non-fungible)", token_kind),
+                    }
+                }
+            }
+            _ => println!("     * Other operation type"),
         }
     }
 
     // Step 8: Validate SDL
     println!("\n✅ Step 8: Validate SDL");
-    sdl_generator.validate_sdl(&verifiable_diffs)?;
+    sdl_generator.validate_state_diffs(&state_diffs)?;
     println!("✅ SDL validation passed");
 
     // Step 9: Demonstrate Asset Mapping

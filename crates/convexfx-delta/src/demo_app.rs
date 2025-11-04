@@ -14,17 +14,13 @@ use convexfx_clearing::{EpochInstance, ScpClearing};
 use convexfx_exchange::{Exchange, ExchangeConfig};
 use convexfx_oracle::RefPrices;
 use convexfx_risk::RiskParams;
-use convexfx_types::{AccountId, Amount, AssetId, Fill, PairOrder};
+use convexfx_types::{AccountId, AssetId, Fill, PairOrder};
 use delta_base_sdk::vaults::{TokenKind, OwnerId, VaultId};
 use delta_crypto::{
-    ed25519::{PrivKey, PubKey},
+    ed25519::PrivKey,
     messages::SignedMessage,
     signing_key::SigningKey,
 };
-use delta_verifiable::types::{
-    debit_allowance::{DebitAllowance, SignedDebitAllowance},
-};
-use serde_json::json;
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::sync::{Arc, RwLock};
@@ -405,7 +401,7 @@ impl DemoApp {
     /// Preview a trade using the actual clearing engine
     pub fn preview_trade(&self, from_asset: &str, to_asset: &str, amount: i64) -> std::result::Result<(f64, f64), DeltaIntegrationError> {
         use convexfx_types::{PairOrder, Amount};
-        use convexfx_clearing::EpochInstance;
+        
         use convexfx_oracle::RefPrices;
         use std::collections::BTreeMap;
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -451,7 +447,7 @@ impl DemoApp {
         let ref_prices = RefPrices::new(y_ref, 5.0, timestamp, vec!["mock".to_string()]); // Very tight bands for low slippage
 
         // Create a single order for preview
-        let order = PairOrder {
+        let _order = PairOrder {
             id: "preview".to_string(),
             trader: "preview_user".to_string().into(),
             pay: pay_asset,
@@ -466,7 +462,7 @@ impl DemoApp {
         let pool_liquidity = self.get_pool_liquidity();
         
         // Convert to float for the target asset (in its native units)
-        let pool_size = pool_liquidity.get(to_asset).copied().unwrap_or(1.0);
+        let _pool_size = pool_liquidity.get(to_asset).copied().unwrap_or(1.0);
         
         // Calculate the exchange rate from reference prices
         // recv = pay * exp(y_pay - y_recv)
