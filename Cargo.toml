@@ -62,5 +62,6 @@ delta_executor_sdk = { version = "=0.5.10", registry = "delta" }
 [registries.delta]
 index = "sparse+https://crates.repyhlabs.dev/api/v1/crates/"
 credential-provider = ["cargo:token"]
-# Secret token generated via https://kellnr.repyhlabs.dev/settings
-token = "IF8THibNiwvrGBLynysamRSxzZIJKzji"
+# Secret token should be set via environment variable CARGO_REGISTRIES_DELTA_TOKEN
+# Generate a token at https://kellnr.repyhlabs.dev/settings
+# Never commit tokens to the repository!
