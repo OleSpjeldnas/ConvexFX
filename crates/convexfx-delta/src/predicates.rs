@@ -329,7 +329,7 @@ mod tests {
     #[test]
     fn test_convergence_validation_y_tolerance_exceeded() {
         let predicate = ScpClearingValidityPredicate::default();
-        let solution = create_test_solution(true, 1e-4, 1e-7); // y norm too large
+        let solution = create_test_solution(true, 2e-4, 1e-7); // y norm too large (exceeds 1e-4 tolerance)
 
         let result = predicate.validate_convergence(&solution);
         assert!(result.is_err());
